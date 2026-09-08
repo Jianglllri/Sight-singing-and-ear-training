@@ -12,14 +12,8 @@
     <nav class="navbar navbar-expand-lg navbar-custom">
         <div class="container navbar-container">
             <a class="navbar-brand" href="{{ url_for('index') }}">听音训练</a>
-            <div class="navbar-nav mx-auto">
-                <a class="nav-link" href="{{ url_for('c_major_scale') }}">自然大调音阶训练</a>
-                <a class="nav-link" href="{{ url_for('natural_scale_training') }}">自然音阶训练</a>
-                <a class="nav-link" href="{{ url_for('free_training') }}">自由训练</a>
-                <a class="nav-link" href="{{ url_for('pitch_training') }}">音高训练</a>
-            </div>
-            <!-- 导航栏照片来源 -->
-            <div class="photo-credit navbar-photo-credit">@Photo by weston m on Unsplash</div>
+            <!-- 首页以卡片作为菜单，不再重复展示导航链接 -->
+            <!-- 背景图：Kitty 唱歌插画 -->
         </div>
     </nav>
 
@@ -43,13 +37,13 @@
                         <div class="music-symbol">♩</div>
                         <h3>自然大调音阶训练</h3>
                     </a>
-                    <a href="{{ url_for('natural_scale_training') }}" class="training-option">
+                    <a href="{{ url_for('jianpu_training') }}" class="training-option">
                         <div class="music-symbol">♪</div>
-                        <h3>自然音阶训练</h3>
+                        <h3>简谱听写</h3>
                     </a>
-                    <a href="{{ url_for('free_training') }}" class="training-option">
+                    <a href="{{ url_for('piano_simulator') }}" class="training-option">
                         <div class="music-symbol">♫</div>
-                        <h3>自由训练</h3>
+                        <h3>自由训练·模拟钢琴</h3>
                     </a>
                     <a href="{{ url_for('pitch_training') }}" class="training-option">
                         <div class="music-symbol">♬</div>
@@ -57,8 +51,6 @@
                     </a>
                 </div>
             </div>
-            <!-- 首页背景图照片来源 -->
-            <div class="photo-credit hero-photo-credit">@Photo by Wes Hicks on Unsplash</div>
         </section>
     </main>
 

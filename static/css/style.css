@@ -9,11 +9,14 @@ body {
     /* 调整背景色为更柔和的浅灰色，增强与其他元素的协调性 */
     background-color: #f5f7fa;
     color: #495057;
-    background-image: 
-        url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><text x="50" y="50" font-size="40" text-anchor="middle" dy=".3em" fill="%23e0e6ed" opacity="0.4">♪</text></svg>'),
-        url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><path d="M0 20 L200 20 M0 40 L200 40 M0 60 L200 60 M0 80 L200 80" stroke="rgba(102,126,234,0.04)" stroke-width="1"/></svg>');
-    background-repeat: repeat, repeat;
-    background-size: 200px, 250px;
+    /* 全站背景：Kitty 唱歌插画（浅色，叠加白色柔光保证正文可读） */
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.4)),
+        url('../images/kitty_bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
     margin: 0;
     padding: 0;
     line-height: 1.6;
@@ -25,8 +28,8 @@ body {
 
 /* 导航栏样式 */
 .navbar-custom {
-    /* 支持自定义背景图片，用户可将图片命名为navbar_bg.jpg放入static/images文件夹 */
-    background-image: url('../images/navbar_bg.jpg');
+    /* 导航栏同样使用 Kitty 背景，叠加白色保证链接可读 */
+    background-image: linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.55)), url('../images/kitty_bg.jpg');
     background-size: cover;
     background-position: center 20%;
     background-repeat: no-repeat;
@@ -99,7 +102,7 @@ body {
 }
 
 .nav-link {
-    color: #495057 !important;
+    color: #6b4a5a !important;
     /* 稍微增大字体大小 */
     font-size: 1.3rem;
     padding: 0.8rem 1.5rem !important;
@@ -113,14 +116,14 @@ body {
     /* 移除阴影，让按钮更好地融入背景 */
     box-shadow: none;
     white-space: nowrap;
-    /* 添加文字轻微发光效果，温润的颜色 */
-    text-shadow: 0 0 5px rgba(255, 200, 150, 0.6);
+    /* 轻微白色发光，在 Kitty 背景上更柔和 */
+    text-shadow: 0 1px 3px rgba(255, 255, 255, 0.7);
 }
 
 /* 移除默认的navbar-light类样式冲突 */
 .navbar-custom.navbar-light .navbar-brand,
 .navbar-custom.navbar-light .nav-link {
-    color: #495057 !important;
+    color: #6b4a5a !important;
 }
 
 .nav-link::after {
@@ -130,7 +133,7 @@ body {
     left: 0;
     width: 0;
     height: 2px;
-    background-color: #007bff;
+    background-color: #b03a6b;
     transition: width 0.3s ease;
 }
 
@@ -139,7 +142,7 @@ body {
 }
 
 .nav-link:hover, .nav-link.active {
-    color: #007bff !important;
+    color: #b03a6b !important;
     /* 保留轻微的上移效果，增强交互感 */
     transform: translateY(-2px);
     /* 移除背景色变化，保持透明 */
@@ -169,14 +172,6 @@ body {
 .frequency-selector:hover {
     background-color: rgba(255,255,255,0.3);
     box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-}
-
-/* 简化背景装饰 */
-body {
-    /* 简化背景，只保留轻微的音符图案 */
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><text x="50" y="50" font-size="40" text-anchor="middle" dy=".3em" fill="%23e9ecef" opacity="0.2">♪</text></svg>');
-    background-repeat: repeat;
-    background-size: 200px;
 }
 
 /* 简化hero-section装饰，让风景图背景完全展现 */
@@ -245,14 +240,14 @@ body {
 .hero-section {
     /* 调整padding，增加上下空间，展示更多图片内容 */
     padding: 120px 2rem 100px;
-    /* 改为相对路径，用户可将图片命名为autumn_landscape.jpg放入static/images文件夹 */
-    background-image: url('../images/autumn_landscape.jpg');
+    /* Kitty 背景图，叠加柔光后文字用深玫瑰色 */
+    background-image: linear-gradient(rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.3)), url('../images/kitty_bg.jpg');
     /* 调整背景尺寸，宽度铺满，高度按比例自动调整，展示更多上下内容 */
     background-size: 100% auto;
     /* 居中显示图片，避免裁剪 */
     background-position: center center;
     background-repeat: no-repeat;
-    color: white;
+    color: #b03a6b;
     position: relative;
     overflow: hidden;
     margin: 0;
@@ -341,22 +336,22 @@ section {
 .hero-title {
     font-size: 4rem;
     font-weight: bold;
-    color: white;
+    color: #b03a6b;
     margin-bottom: 25px;
     position: relative;
     z-index: 1;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    text-shadow: 0 1px 2px rgba(255,255,255,0.6);
     letter-spacing: -1px;
 }
 
 .hero-subtitle {
     font-size: 1.8rem;
-    color: rgba(255,255,255,0.9);
+    color: rgba(130, 60, 95, 0.95);
     margin-bottom: 50px;
     position: relative;
     z-index: 1;
     font-style: italic;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+    text-shadow: 0 1px 2px rgba(255,255,255,0.5);
 }
 
 /* 口号轮播 */
@@ -369,25 +364,25 @@ section {
     position: relative;
     z-index: 1;
     max-width: 1200px;
-    /* 更透明的背景，与风景图融合 */
-    background: rgba(255,255,255,0.1);
+    /* 浅色磨砂胶囊，与 Kitty 背景融合 */
+    background: rgba(255,255,255,0.45);
     backdrop-filter: blur(15px);
     border-radius: 50px;
     padding: 20px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-    border: 1px solid rgba(255,255,255,0.3);
+    box-shadow: 0 8px 32px rgba(176, 58, 107, 0.15);
+    border: 1px solid rgba(255,255,255,0.5);
     transition: all 0.3s ease;
 }
 
 .slogan-carousel:hover {
-    background: rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.55);
     transform: translateY(-3px);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+    box-shadow: 0 12px 40px rgba(176, 58, 107, 0.2);
 }
 
 .slogan-item {
     font-size: 2rem;
-    color: white;
+    color: #8a4a68;
     font-style: italic;
     font-weight: 600;
     opacity: 0;
@@ -395,8 +390,7 @@ section {
     transition: all 0.5s ease;
     text-align: center;
     max-width: 90%;
-    /* 更强的文字阴影，确保在风景图上可读 */
-    text-shadow: 2px 2px 5px rgba(0,0,0,0.7);
+    text-shadow: 0 1px 2px rgba(255,255,255,0.6);
     transform: scale(0.9);
 }
 
@@ -422,17 +416,16 @@ section {
     flex-direction: column;
     align-items: center;
     text-decoration: none;
-    color: #343a40;
-    /* 更透明的卡片背景，与风景图融合 */
-    background: linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.75) 100%);
+    color: #5a3a4a;
+    /* 磨砂白卡片，与 Kitty 背景融合 */
+    background: linear-gradient(135deg, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0.78) 100%);
     backdrop-filter: blur(10px);
     padding: 40px 30px;
     border-radius: 15px;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    box-shadow: 0 8px 25px rgba(176, 58, 107, 0.12);
     transition: all 0.4s ease;
     min-width: 250px;
-    /* 更柔和的边框颜色 */
-    border: 3px solid rgba(255,255,255,0.5);
+    border: 3px solid rgba(255,255,255,0.6);
     position: relative;
     overflow: hidden;
 }
@@ -473,10 +466,10 @@ section {
 
 .training-option:hover {
     transform: translateY(-10px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-    border-color: #007bff;
-    color: #007bff;
-    background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,249,250,0.9) 100%);
+    box-shadow: 0 20px 40px rgba(176, 58, 107, 0.22);
+    border-color: #b03a6b;
+    color: #b03a6b;
+    background: linear-gradient(135deg, rgba(255,255,255,0.97) 0%, rgba(255,245,250,0.95) 100%);
 }
 
 .music-symbol {
@@ -701,20 +694,20 @@ section.container {
 
 .key.white {
     width: 70px;
-    background: linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%);
+    background: linear-gradient(180deg, #ffffff 0%, #f7edf2 100%);
     z-index: 1;
-    color: #343a40;
-    border: 1px solid #dee2e6;
+    color: #5a3a4a;
+    border: 1px solid #e8d5de;
 }
 
 .key.black {
     width: 45px;
     height: 150px;
-    background: linear-gradient(180deg, #000000 0%, #333333 100%);
+    background: linear-gradient(180deg, #3d2030 0%, #1f1018 100%);
     margin: 0 -22.5px;
     z-index: 2;
-    color: white;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    color: rgba(255, 235, 242, 0.9);
+    box-shadow: 0 8px 20px rgba(60, 20, 40, 0.35);
 }
 
 .key:hover, .key.active {
@@ -756,14 +749,13 @@ section.container {
 
 
 
-/* 底部栏 */
+/* 底部栏：深玫瑰渐变，与 Kitty 主题呼应 */
 .footer {
-    background: linear-gradient(135deg, #343a40 0%, #212529 100%);
-    color: white;
+    background: linear-gradient(135deg, #5a2340 0%, #3d1a2c 100%);
+    color: rgba(255, 240, 246, 0.9);
     padding: 30px 0;
-    /* 移除顶部margin，解决与背景图之间的空白 */
     margin-top: 0;
-    border-top: 3px solid #e74c3c;
+    border-top: 3px solid #b03a6b;
     width: 100%;
     position: relative;
     z-index: 1;
@@ -1013,3 +1005,109 @@ section.container {
         margin: 0 -15px;
     }
 }
+
+/* ===== 交互打磨（可访问性与细节体验） ===== */
+
+/* 键盘焦点可见性，方便无障碍导航 */
+:focus-visible {
+    outline: 2px solid #b03a6b;
+    outline-offset: 2px;
+}
+
+/* 钢琴键盘横向滚动条美化 */
+.piano-keyboard::-webkit-scrollbar {
+    height: 8px;
+}
+
+.piano-keyboard::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 4px;
+}
+
+.piano-keyboard::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+}
+
+/* 琴键按下动效 */
+.key:active {
+    transform: translateY(1px) scale(0.99);
+}
+
+/* 禁用按钮统一弱化样式 */
+.btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+    /* 系统偏好减少动态效果时，关闭装饰动画 */
+@media (prefers-reduced-motion: reduce) {
+    .slogan-item,
+    .training-option,
+    .training-card,
+    .key,
+    .nav-link {
+        transition: none;
+    }
+}
+
+/* 简谱页等输入框与下拉框统一过渡，提升精致感 */
+    input, select, textarea {
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    input:focus, select:focus, textarea:focus {
+        border-color: #b03a6b;
+        box-shadow: 0 0 0 0.2rem rgba(176, 58, 107, 0.15);
+        outline: none;
+    }
+    
+    /* 主题色按钮：primary 系指向玫玖色（Bootstrap 覆盖） */
+    .btn-primary {
+        background-color: #b03a6b;
+        border-color: #b03a6b;
+    }
+    
+    .btn-primary:hover, .btn-primary:focus {
+        background-color: #96315b;
+        border-color: #96315b;
+    }
+    
+    .btn-outline-primary {
+        color: #b03a6b;
+        border-color: #b03a6b;
+    }
+    
+    .btn-outline-primary:hover {
+        background-color: #b03a6b;
+        border-color: #b03a6b;
+    }
+    
+    .btn-outline-primary.active {
+        background-color: #b03a6b;
+        border-color: #b03a6b;
+        color: #fff;
+    }
+    
+    /* 选中的选择题按钮保持玫玖色 */
+    .jianpu-degree-btn.active,
+    .contour-dir-btn.active {
+        background-color: #b03a6b;
+        border-color: #b03a6b;
+        color: #fff;
+    }
+    
+    /* 滚动条整体美化（简谱图片预览等局部滚动区） */
+    .jianpu-image-view::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    
+    .jianpu-image-view::-webkit-scrollbar-thumb {
+        background: rgba(176, 58, 107, 0.35);
+        border-radius: 4px;
+    }
+    
+    .jianpu-image-view::-webkit-scrollbar-track {
+        background: rgba(176, 58, 107, 0.08);
+    }

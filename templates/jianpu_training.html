@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简谱听写 - 听音训练</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* 页面背景：Kitty 唱歌插画 + 白色柔光，与全站统一 */
+        body {
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.45)),
+                url('{{ url_for('static', filename='images/kitty_bg.jpg') }}');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-color: #f7edf2;
+        }
+        .jianpu-page {
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 2rem 1rem 4rem;
+        }
+        .jianpu-panel {
+            background: linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(255,247,251,0.88) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(176, 58, 107, 0.25);
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(60, 20, 40, 0.10);
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem 1.5rem;
+            align-items: flex-end;
+            margin-bottom: 1.25rem;
+        }
+        .jianpu-panel .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            min-width: 170px;
+            flex: 1;
+        }
+        .jianpu-panel label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #5a3a4a;
+        }
+        .jianpu-panel select {
+            padding: 0.5rem 0.7rem;
+            border: 1px solid #d9bcc9;
+            border-radius: 8px;
+            background: #fff;
+        }
+        .jianpu-source {
+            background: linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(255,247,251,0.88) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(176, 58, 107, 0.25);
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(60, 20, 40, 0.10);
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.25rem;
+        }
+        .jianpu-source label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #5a3a4a;
+        }
+        #jianpu-text {
+            width: 100%;
+            min-height: 84px;
+            margin-top: 0.5rem;
+            padding: 0.6rem 0.8rem;
+            border: 1px solid #d9bcc9;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            background: #fff;
+        }
+        .jianpu-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+        }
+        .jianpu-preview {
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.15rem;
+            line-height: 1.9;
+            display: none;
+        }
+        .jianpu-preview .bar + .bar::before {
+            content: '| ';
+            color: #b03a6b;
+        }
+        .jianpu-preview .bar { margin-right: 0.25rem; white-space: nowrap; }
+        .jianpu-preview .rest { color: #adb5bd; }
+        
+        /* 播放整曲时实时跳动的音符光标 */
+        .jianpu-note-tok {
+            display: inline-block;
+            padding: 1px 4px;
+            border-radius: 4px;
+            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .jianpu-note-tok.playing {
+            background: #b03a6b;
+            color: #fff !important;
+            transform: scale(1.22);
+            box-shadow: 0 0 12px rgba(176, 58, 107, 0.7);
+            font-weight: bold;
+        }
+        
+        .jianpu-hint {
+            color: #8a6a78;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+        
+        .jianpu-page > h2 {
+            color: #b03a6b;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        
+        .jianpu-page > p.text-center {
+            color: #6b4a5a;
+        }
+        .jianpu-score {
+            font-size: 1.05rem;
+            margin-bottom: 1.25rem;
+            text-align: center;
+        }
+        .jianpu-stage {
+            background: linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(255,247,251,0.88) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(176, 58, 107, 0.2);
+            border-radius: 14px;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(60, 20, 40, 0.10);
+        }
+        .jianpu-status {
+            min-height: 1.6rem;
+            margin-bottom: 1.25rem;
+            font-size: 1.1rem;
+        }
+        .jianpu-status.ok { color: #198754; }
+        .jianpu-status.bad { color: #dc3545; }
+        .jianpu-actions-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        .jianpu-answer-note-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 0.6rem;
+        }
+        .jianpu-answer-note-row .note-index {
+            min-width: 4.2rem;
+            color: #6c757d;
+            font-size: 0.9rem;
+            text-align: right;
+        }
+        .jianpu-degree-btn {
+            min-width: 2.6rem;
+        }
+        .jianpu-dictation-input {
+            width: 110px;
+            text-align: center;
+            padding: 0.4rem;
+            border: 1px solid #a0aec0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        .jianpu-reveal {
+            min-height: 1.5rem;
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-top: 0.75rem;
+        }
+        .jianpu-reveal .ok { color: #198754; }
+        .jianpu-reveal .bad { color: #dc3545; }
+        /* 图片导入与原图预览 */
+        .jianpu-columns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.25rem;
+            align-items: stretch;
+        }
+        .jianpu-columns .jianpu-source {
+            flex: 1 1 460px;
+            margin-bottom: 1.25rem;
+        }
+        .jianpu-image-panel {
+            flex: 1 1 340px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(255,247,251,0.88) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(176, 58, 107, 0.25);
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(60, 20, 40, 0.10);
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.25rem;
+            display: none;
+        }
+        .jianpu-image-panel > label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #5a3a4a;
+        }
+        .jianpu-import-row {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin: 0.5rem 0;
+            flex-wrap: wrap;
+        }
+        .jianpu-ocr-status {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        .jianpu-ocr-status.ok { color: #198754; }
+        .jianpu-ocr-status.bad { color: #dc3545; }
+        .jianpu-image-view {
+            margin-top: 0.75rem;
+            height: 420px;
+            overflow: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            background: #f8f9fa;
+            cursor: grab;
+        }
+        .jianpu-image-view.dragging { cursor: grabbing; }
+        .jianpu-image-view img {
+            display: block;
+            max-width: none;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+        .jianpu-zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.6rem;
+        }
+        .jianpu-zoom-controls button { width: 2.4rem; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-custom">
+        <div class="container navbar-container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">听音训练</a>
+            <div class="navbar-nav mx-auto">
+                <a class="nav-link" href="{{ url_for('c_major_scale') }}">自然大调音阶训练</a>
+                <a class="nav-link" href="{{ url_for('pitch_training') }}">音高训练</a>
+                <a class="nav-link active" href="{{ url_for('jianpu_training') }}">简谱听写</a>
+                <a class="nav-link" href="{{ url_for('piano_simulator') }}">自由训练·模拟钢琴</a>
+            </div>
+            <!-- 背景图：Kitty 唱歌插画 -->
+        </div>
+    </nav>
+
+    <main>
+        <section class="jianpu-page">
+            <h2 class="text-center">简谱听写</h2>
+            <p class="text-center" style="color: #6c757d;">
+                内置经典曲库，也支持粘贴自定义简谱。随机抽取一段播放，从「听走向」到「听唱名」再到「听写全谱」逐级进阶。
+            </p>
+
+        <!-- 图片导入 + 曲谱来源 + 原图预览 -->
+            <div class="jianpu-columns">
+            <div class="jianpu-source">
+                <label for="jianpu-song">曲库 / 导入</label>
+                <div class="jianpu-import-row">
+                    <input type="file" id="jianpu-image-file" accept="image/*" hidden>
+                    <button class="btn btn-outline-secondary btn-sm" id="jianpu-image-btn">📁 选择简谱图片</button>
+                    <button class="btn btn-outline-primary btn-sm" id="jianpu-ocr" disabled>🔍 自动识别为简谱</button>
+                    <span class="jianpu-ocr-status" id="jianpu-ocr-status">也可直接粘贴截图（Ctrl+V）</span>
+                </div>
+                <div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
+                    <select id="jianpu-song" class="form-select" style="max-width: 260px;"></select>
+                    <button class="btn btn-outline-danger btn-sm" id="jianpu-delete-btn" style="display: none;" title="从数据库中删除当前自建曲目">🗑️ 删除此曲</button>
+                </div>
+                
+                <!-- 自建简谱保存入库工具条 -->
+                <div class="jianpu-save-bar mt-2" id="jianpu-save-bar" style="display: none; padding: 0.6rem 0.8rem; background: rgba(176, 58, 107, 0.08); border-radius: 8px; border: 1px dashed rgba(176, 58, 107, 0.35);">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <input type="text" id="jianpu-custom-title" class="form-control form-control-sm" placeholder="输入歌曲名称（如：我的原创小调）" style="max-width: 240px;">
+                        <select id="jianpu-custom-key" class="form-select form-select-sm" style="width: auto;">
+                            <option value="C" selected>1 = C</option>
+                            <option value="D">1 = D</option>
+                            <option value="E">1 = E</option>
+                            <option value="F">1 = F</option>
+                            <option value="G">1 = G</option>
+                            <option value="A">1 = A</option>
+                            <option value="B">1 = B</option>
+                            <option value="Bb">1 = bB</option>
+                            <option value="Eb">1 = bE</option>
+                            <option value="Ab">1 = bA</option>
+                        </select>
+                        <button class="btn btn-success btn-sm" id="jianpu-save-btn">💾 确认存入数据库</button>
+                    </div>
+                </div>
+
+                <textarea id="jianpu-text" spellcheck="false" placeholder="在此输入简谱记号，或选择上方经典曲目..."></textarea>
+                <div class="jianpu-actions">
+                    <button class="btn btn-outline-primary" id="jianpu-load">解析曲谱</button>
+                    <button class="btn btn-outline-success btn-sm" id="jianpu-toggle-save">＋ 存为新歌曲到曲库</button>
+                </div>
+                <div class="jianpu-preview" id="jianpu-preview"></div>
+                <div class="jianpu-hint">
+                    语法：1-7 唱名；# 升号、b 降号（如 #4）；高音点直接缀在音后（1̇，U+0307），低音点同样支持下加点（U+0323），
+                    亦兼容 1' / 1, 写法；- 延音；0 休止；| 小节线；空格分隔。默认 1 = C（C4）。
+                </div>
+            </div>
+
+            <!-- 简谱原图预览（支持缩放与拖动） -->
+            <div class="jianpu-image-panel" id="jianpu-image-panel">
+                <label>简谱原图（当前 <span id="jianpu-zoom-label">100%</span>）</label>
+                <div class="jianpu-image-view" id="jianpu-image-view">
+                    <img id="jianpu-image" alt="简谱原图">
+                </div>
+                <div class="jianpu-zoom-controls">
+                    <button class="btn btn-outline-secondary btn-sm" id="jianpu-zoom-out">－</button>
+                    <input type="range" id="jianpu-zoom" min="40" max="300" value="100">
+                    <button class="btn btn-outline-secondary btn-sm" id="jianpu-zoom-in">＋</button>
+                    <button class="btn btn-outline-secondary btn-sm" id="jianpu-zoom-reset">重置</button>
+                </div>
+            </div>
+            </div>
+
+            <!-- 练习与播放设置 -->
+            <div class="jianpu-panel">
+                <div class="control-group">
+                    <label for="jianpu-play-key">播放调号 (移调)</label>
+                    <select id="jianpu-play-key">
+                        <option value="C" selected>1 = C (标准)</option>
+                        <option value="Db">1 = bD / C#</option>
+                        <option value="D">1 = D</option>
+                        <option value="Eb">1 = bE / D#</option>
+                        <option value="E">1 = E</option>
+                        <option value="F">1 = F</option>
+                        <option value="Gb">1 = bG / F#</option>
+                        <option value="G">1 = G</option>
+                        <option value="Ab">1 = bA / G#</option>
+                        <option value="A">1 = A</option>
+                        <option value="Bb">1 = bB / A#</option>
+                        <option value="B">1 = B</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="jianpu-octave-shift">八度升降</label>
+                    <select id="jianpu-octave-shift">
+                        <option value="1">▲ +1 升八度 (高八度)</option>
+                        <option value="0" selected>• 原八度 (标准)</option>
+                        <option value="-1">▼ -1 降八度 (低八度)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="jianpu-difficulty">难度</label>
+                    <select id="jianpu-difficulty">
+                        <option value="contour">入门 · 听走向（↑ → ↓）</option>
+                        <option value="degree">进阶 · 听唱名（1-7）</option>
+                        <option value="dictation">困难 · 听写全谱</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="jianpu-length">片段长度</label>
+                    <select id="jianpu-length">
+                        <option value="2">2 个音</option>
+                        <option value="3" selected>3 个音</option>
+                        <option value="4">4 个音</option>
+                        <option value="bar">整个小节</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="jianpu-new">下一题</button>
+                <button class="btn btn-secondary" id="jianpu-replay">重听</button>
+                <button class="btn btn-success" id="jianpu-playall">▶ 弹奏整曲</button>
+            </div>
+
+            <p class="jianpu-score">
+                正确 <span id="jianpu-correct">0</span> / <span id="jianpu-total">0</span>
+                ，正确率 <span id="jianpu-rate">-</span>
+            </p>
+
+            <div class="jianpu-stage">
+                <p class="jianpu-status" id="jianpu-status">解析曲谱后，点击「下一题」开始</p>
+                <div class="jianpu-actions-row" id="jianpu-answer-area"></div>
+                <div class="jianpu-reveal" id="jianpu-reveal"></div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container text-center">
+            <p>Copyright © 2026-2046 听音训练 fetraining.com All Rights Reserved</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/keymapping.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/jianpu_training.js') }}"></script>
+</body>
+</html>

@@ -23,6 +23,7 @@ class AudioSystem {
         this.useSamples = true; // 默认使用采样声音
         this.sampleBaseUrl = '/static/audio/piano/'; // 采样文件基础路径
         this.sampleCache = {}; // 解码后的音频缓冲区缓存
+        this.loadingPromises = {}; // 进行中的采样加载任务（并发去重）
         
         // 音频效果节点
         this.effectNodes = {
@@ -147,16 +148,12 @@ class AudioSystem {
         if (this.useSamples) {
             let audioFile = null;
             
-            // 优先使用直接查找函数
+            // 优先使用直接查找函数，失败再回退到科学记号法查找
             if (window.getAudioFileByNoteAndOctaveDirect) {
                 audioFile = window.getAudioFileByNoteAndOctaveDirect(note, octave);
-                console.log('Trying direct lookup for:', note, octave, 'audioFile:', audioFile);
             }
-            
-            // 如果直接查找失败，尝试使用原有的查找函数
             if (!audioFile && window.getAudioFileByNoteAndOctave) {
                 audioFile = window.getAudioFileByNoteAndOctave(note, octave);
-                console.log('Trying normal lookup for:', note, octave, 'audioFile:', audioFile);
             }
             
             if (audioFile) {
@@ -183,22 +180,17 @@ class AudioSystem {
             if (!this.sampleCache[fullNote]) {
                 // 如果没有提供audioFile，尝试从keyMapping中获取
                 if (!audioFile) {
-                    // 更可靠的方式提取音符名称和八度
                     const octaveMatch = fullNote.match(/\d+$/);
                     if (octaveMatch) {
                         const octave = parseInt(octaveMatch[0]);
                         const note = fullNote.slice(0, -octave.toString().length);
                         
-                        // 优先使用直接查找函数
+                        // 优先使用直接查找函数，失败再回退到科学记号法查找
                         if (window.getAudioFileByNoteAndOctaveDirect) {
                             audioFile = window.getAudioFileByNoteAndOctaveDirect(note, octave);
-                            console.log('Trying direct lookup for:', note, octave, 'audioFile:', audioFile);
                         }
-                        
-                        // 如果直接查找失败，尝试使用原有的查找函数
                         if (!audioFile && window.getAudioFileByNoteAndOctave) {
                             audioFile = window.getAudioFileByNoteAndOctave(note, octave);
-                            console.log('Trying normal lookup for:', note, octave, 'audioFile:', audioFile);
                         }
                     }
                 }
@@ -207,17 +199,8 @@ class AudioSystem {
                     throw new Error(`Audio file not found for note: ${fullNote}`);
                 }
                 
-                // 加载并解码音频文件
-                console.log('Loading sample for:', fullNote, 'from:', this.sampleBaseUrl + audioFile);
-                const response = await fetch(this.sampleBaseUrl + audioFile);
-                
-                if (!response.ok) {
-                    throw new Error(`Failed to load sample: ${response.status} ${response.statusText}`);
-                }
-                
-                const arrayBuffer = await response.arrayBuffer();
-                this.sampleCache[fullNote] = await this.audioContext.decodeAudioData(arrayBuffer);
-                console.log('Sample loaded successfully:', fullNote);
+                // 加载并解码音频文件（并发请求自动去重）
+                await this.loadSampleBuffer(fullNote, audioFile);
             }
             
             // 创建音频源
@@ -275,57 +258,68 @@ class AudioSystem {
         return this.useSamples;
     }
     
+    // 加载并解码采样文件（同一音符的并发加载自动去重，结果写入缓存）
+    loadSampleBuffer(fullNote, audioFile) {
+        if (this.loadingPromises[fullNote]) {
+            return this.loadingPromises[fullNote];
+        }
+        
+        const promise = fetch(this.sampleBaseUrl + audioFile)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Failed to load sample: ${response.status} ${response.statusText}`);
+                }
+                return response.arrayBuffer();
+            })
+            .then(arrayBuffer => this.audioContext.decodeAudioData(arrayBuffer))
+            .then(audioBuffer => {
+                this.sampleCache[fullNote] = audioBuffer;
+                return audioBuffer;
+            })
+            .finally(() => {
+                delete this.loadingPromises[fullNote];
+            });
+        
+        this.loadingPromises[fullNote] = promise;
+        return promise;
+    }
+    
     // 预加载常用音符的采样文件
     preloadCommonSamples() {
         // 预加载C大调常用音符的采样文件（根据新的映射规则）
         const commonNotes = ['C2', 'D2', 'E2', 'F2', 'G2', 'A2', 'B2', 'C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5', 'C6', 'C7'];
         
         commonNotes.forEach(note => {
-            // 尝试从keyMapping中获取音频文件路径
-            let audioFile = null;
-            
-            // 更可靠的方式提取音符名称和八度
+            // 提取音符名称和八度，再查找对应的采样文件
             const octaveMatch = note.match(/\d+$/);
-            if (octaveMatch) {
-                const octave = parseInt(octaveMatch[0]);
-                const noteName = note.slice(0, -octave.toString().length);
-                
-                // 优先使用直接查找函数
-                if (window.getAudioFileByNoteAndOctaveDirect) {
-                    audioFile = window.getAudioFileByNoteAndOctaveDirect(noteName, octave);
-                    console.log('Trying direct lookup for:', noteName, octave, 'audioFile:', audioFile);
-                }
-                
-                // 如果直接查找失败，尝试使用原有的查找函数
-                if (!audioFile && window.getAudioFileByNoteAndOctave) {
-                    audioFile = window.getAudioFileByNoteAndOctave(noteName, octave);
-                    console.log('Trying normal lookup for:', noteName, octave, 'audioFile:', audioFile);
-                }
+            if (!octaveMatch) return;
+            
+            const octave = parseInt(octaveMatch[0]);
+            const noteName = note.slice(0, -octave.toString().length);
+            
+            let audioFile = null;
+            // 优先使用直接查找函数，失败再回退到科学记号法查找
+            if (window.getAudioFileByNoteAndOctaveDirect) {
+                audioFile = window.getAudioFileByNoteAndOctaveDirect(noteName, octave);
+            }
+            if (!audioFile && window.getAudioFileByNoteAndOctave) {
+                audioFile = window.getAudioFileByNoteAndOctave(noteName, octave);
             }
             
-            if (audioFile) {
-                // 尝试预加载采样文件
-                console.log('Preloading sample for:', note, 'from:', this.sampleBaseUrl + audioFile);
-                fetch(this.sampleBaseUrl + audioFile)
-                    .then(response => response.arrayBuffer())
-                    .then(arrayBuffer => this.audioContext.decodeAudioData(arrayBuffer))
-                    .then(audioBuffer => {
-                        this.sampleCache[note] = audioBuffer;
-                        console.log('Sample preloaded successfully:', note);
-                    })
-                    .catch(error => {
-                        console.warn('Failed to preload sample:', note, error);
-                    });
-            } else {
+            if (!audioFile) {
                 console.warn('Sample file not found for:', note);
+                return;
             }
+            
+            this.loadSampleBuffer(note, audioFile).catch(error => {
+                console.warn('Failed to preload sample:', note, error);
+            });
         });
     }
     
     // 播放C大调音阶
     playCMajorScale() {
         const notes = ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C'];
-        let startTime = this.audioContext.currentTime;
         
         notes.forEach((note, index) => {
             setTimeout(() => {
@@ -337,7 +331,6 @@ class AudioSystem {
     // 播放琶音
     playArpeggio() {
         const notes = ['C', 'E', 'G', 'C', 'G', 'E', 'C'];
-        let startTime = this.audioContext.currentTime;
         
         notes.forEach((note, index) => {
             setTimeout(() => {

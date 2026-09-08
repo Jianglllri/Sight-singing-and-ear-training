@@ -10,7 +10,7 @@
         /* C大调自然音阶练习页面样式 - 学院风 */
         body {
             /* 添加页面背景图片 */
-            background-image: url('{{ url_for('static', filename='images/Cmajor_bg.jpg') }}');
+            background-image: linear-gradient(rgba(122, 63, 94, 0.45), rgba(122, 63, 94, 0.45)), url('{{ url_for('static', filename='images/kitty_bg.jpg') }}');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -26,33 +26,33 @@
         
         /* 标题样式 */
         .c-major-scale-container h2 {
-            color: white;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            color: #5a2340;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 1.2rem;
+            text-align: center;
         }
         
         /* 控制面板样式 */
         .control-panel {
-            /* 添加背景图片 */
-            background-image: url('{{ url_for('static', filename='images/bar_bg.jpg') }}');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 247, 251, 0.88) 100%);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             padding: 1.5rem 2rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(60, 20, 40, 0.10);
             margin-bottom: 2rem;
-            /* 使用flex布局确保所有控制项在同一行 */
             display: flex;
             justify-content: space-between;
             align-items: center;
             gap: 1.5rem;
-            border: 2px solid black;
+            border: 1px solid rgba(176, 58, 107, 0.25);
         }
         
         /* 控制面板文字颜色 */
         .control-panel label {
-            color: white;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            color: #5a3a4a;
+            font-weight: 600;
         }
         
         .control-panel select,
@@ -110,8 +110,8 @@
         
         /* 钢琴键盘样式 */
         .piano-container {
-            /* 使用背景图片，用户可将图片命名为piano_bg.jpg放入static/images文件夹 */
-            background-image: url('{{ url_for('static', filename='images/piano_bg.jpg') }}');
+            /* 背景图：Kitty 唱歌插画（叠加柔光保证白字可读） */
+            background-image: linear-gradient(rgba(122, 63, 94, 0.45), rgba(122, 63, 94, 0.45)), url('{{ url_for('static', filename='images/kitty_bg.jpg') }}');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -347,10 +347,25 @@
             background: linear-gradient(180deg, #38a169 0%, #2f855a 100%);
         }
         
+        /* 错误按键高亮 - 红色对比 */
+        .key.error-highlight {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(229, 62, 62, 0.45);
+        }
+        
+        .key.white.error-highlight {
+            background: linear-gradient(180deg, #fff5f5 0%, #fed7d7 100%);
+            border-color: #feb2b2;
+        }
+        
+        .key.black.error-highlight {
+            background: linear-gradient(180deg, #e53e3e 0%, #c53030 100%);
+        }
+        
         /* 结果显示区域 */
         .result-area {
             /* 添加背景图片 */
-            background-image: url('{{ url_for('static', filename='images/bar_bg.jpg') }}');
+            background-image: linear-gradient(rgba(122, 63, 94, 0.5), rgba(122, 63, 94, 0.5)), url('{{ url_for('static', filename='images/kitty_bg.jpg') }}');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -611,8 +626,8 @@
         
         /* 钢琴键盘容器 */
         .piano-container {
-            /* 使用背景图片，用户可将图片命名为piano_bg.jpg放入static/images文件夹 */
-            background-image: url('{{ url_for('static', filename='images/piano_bg.jpg') }}');
+            /* 背景图：Kitty 唱歌插画（叠加柔光保证白字可读） */
+            background-image: linear-gradient(rgba(122, 63, 94, 0.45), rgba(122, 63, 94, 0.45)), url('{{ url_for('static', filename='images/kitty_bg.jpg') }}');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -651,12 +666,11 @@
             <a class="navbar-brand" href="{{ url_for('index') }}">听音训练</a>
             <div class="navbar-nav mx-auto">
                 <a class="nav-link active" href="{{ url_for('c_major_scale') }}">自然大调音阶训练</a>
-                <a class="nav-link" href="{{ url_for('natural_scale_training') }}">自然音阶训练</a>
-                <a class="nav-link" href="{{ url_for('free_training') }}">自由训练</a>
                 <a class="nav-link" href="{{ url_for('pitch_training') }}">音高训练</a>
+                <a class="nav-link" href="{{ url_for('jianpu_training') }}">简谱听写</a>
+                <a class="nav-link" href="{{ url_for('piano_simulator') }}">自由训练·模拟钢琴</a>
             </div>
-            <!-- 导航栏照片来源 -->
-            <div class="photo-credit navbar-photo-credit">@Photo by weston m on Unsplash</div>
+            <!-- 背景图：Kitty 唱歌插画 -->
         </div>
     </nav>
 
@@ -719,7 +733,7 @@
             <!-- 第二层：钢琴键盘 -->
             <div class="piano-container">
                 <!-- 钢琴背景图片署名 -->
-                <div class="piano-photo-credit">@Photo by Keith Misner on Unsplash</div>
+                
                 
                 <!-- 自然大调音阶选项 -->
                 <div class="major-scale-options" style="width: 150px;">
@@ -856,7 +870,7 @@
     </footer>
 
     <!-- 页面背景图片署名 -->
-    <div class="page-photo-credit">@Photo by Ian Dooley on Unsplash</div>
+    
 
     <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

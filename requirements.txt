@@ -1,1 +1,4 @@
-Flask>=2.0.0
+Flask>=3.0,<4.0
+# 简谱图片识别（可选依赖：需系统安装 tesseract）
+pytesseract>=0.3.10
+Pillow>=10.0

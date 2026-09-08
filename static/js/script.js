@@ -9,8 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // 初始化音阶练习页面
     initScalePractice();
     
-    // 初始化自由训练页面
-    initFreeTraining();
+    // 初始化录音控件（自由训练·模拟钢琴合并页）
+    initFreePlayRecording();
 });
 
 // 初始化频率选择器
@@ -21,23 +21,22 @@ function initFrequencySelector() {
     
     if (!slider || !valueDisplay || !playButton) return;
     
-    // 更新显示值
+    // 更新显示值 + 节流播放预览音效（增强交互感，避免高频触发）
+    let lastPreviewTime = 0;
     slider.addEventListener('input', function() {
-        const frequency = this.value;
+        const frequency = parseFloat(this.value);
         valueDisplay.textContent = frequency + ' Hz';
+        
+        const now = Date.now();
+        if (now - lastPreviewTime > 120) {
+            lastPreviewTime = now;
+            audioSystem.playFrequency(frequency, 0.1);
+        }
     });
     
     // 播放按钮点击事件
     playButton.addEventListener('click', function() {
-        const frequency = parseFloat(slider.value);
-        audioSystem.playFrequency(frequency, 1.0);
-    });
-    
-    // 滑块拖动时播放音效（可选，增加交互体验）
-    slider.addEventListener('input', function() {
-        const frequency = parseFloat(this.value);
-        // 短暂播放低音量的音效，增强交互感
-        audioSystem.playFrequency(frequency, 0.1);
+        audioSystem.playFrequency(parseFloat(slider.value), 1.0);
     });
 }
 
@@ -100,95 +99,55 @@ function initScalePractice() {
     }
 }
 
-// 初始化自由训练页面
-function initFreeTraining() {
-    const pianoKeyboard = document.querySelector('.piano-keyboard');
-    if (!pianoKeyboard) return;
-    
-    // 生成钢琴键盘
-    generatePianoKeyboard(pianoKeyboard);
-    
-    // 录音功能（简化版）
-    const recordBtn = document.getElementById('record');
-    const playBackBtn = document.getElementById('play-back');
-    const clearBtn = document.getElementById('clear');
-    
-    let isRecording = false;
-    let recordedNotes = [];
-    
-    if (recordBtn && playBackBtn && clearBtn) {
-        recordBtn.addEventListener('click', function() {
-            isRecording = !isRecording;
-            this.textContent = isRecording ? '停止录音' : '开始录音';
-            this.classList.toggle('btn-danger', isRecording);
-            this.classList.toggle('btn-primary', !isRecording);
-        });
-        
-        playBackBtn.addEventListener('click', function() {
-            playBackRecordedNotes(recordedNotes);
-        });
-        
-        clearBtn.addEventListener('click', function() {
-            recordedNotes = [];
-            alert('录音已清除');
+// 录音状态（自由训练·模拟钢琴合并页：录音/回放共用）
+const recordingState = {
+    active: false,
+    notes: [],
+    startTime: 0
+};
+
+// 弹奏时记录音符（供录音功能调用，琴键点击与键盘快捷键均可接入）
+function recordNoteIfRecording(note, octave) {
+    if (recordingState.active) {
+        recordingState.notes.push({
+            note: note,
+            octave: octave,
+            delay: Date.now() - recordingState.startTime
         });
     }
 }
 
-// 生成钢琴键盘
-function generatePianoKeyboard(container) {
-    const whiteKeys = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
-    const blackKeys = ['C#', 'D#', '', 'F#', 'G#', 'A#', ''];
+// 初始化录音控件（录音/回放/清除）
+function initFreePlayRecording() {
+    const recordBtn = document.getElementById('record');
+    const playBackBtn = document.getElementById('play-back');
+    const clearBtn = document.getElementById('clear');
     
-    // 生成一个八度的钢琴键盘
-    for (let i = 0; i < 7; i++) {
-        // 白键
-        const whiteKey = document.createElement('div');
-        whiteKey.className = 'key white';
-        whiteKey.textContent = whiteKeys[i];
-        whiteKey.dataset.note = whiteKeys[i];
-        whiteKey.dataset.octave = '4';
-        
-        // 白键点击事件
-        whiteKey.addEventListener('click', function() {
-            const note = this.dataset.note;
-            const octave = parseInt(this.dataset.octave);
-            audioSystem.playNote(note, octave, 1.0);
-            
-            // 添加按下效果
-            this.classList.add('active');
-            setTimeout(() => {
-                this.classList.remove('active');
-            }, 100);
-        });
-        
-        container.appendChild(whiteKey);
-        
-        // 黑键（如果有的话）
-        if (blackKeys[i]) {
-            const blackKey = document.createElement('div');
-            blackKey.className = 'key black';
-            blackKey.textContent = blackKeys[i];
-            blackKey.dataset.note = blackKeys[i];
-            blackKey.dataset.octave = '4';
-            
-            // 黑键点击事件
-            blackKey.addEventListener('click', function(e) {
-                e.stopPropagation(); // 防止触发白键事件
-                const note = this.dataset.note;
-                const octave = parseInt(this.dataset.octave);
-                audioSystem.playNote(note, octave, 1.0);
-                
-                // 添加按下效果
-                this.classList.add('active');
-                setTimeout(() => {
-                    this.classList.remove('active');
-                }, 100);
-            });
-            
-            container.appendChild(blackKey);
+    if (!recordBtn || !playBackBtn || !clearBtn) return;
+    
+    recordBtn.addEventListener('click', function() {
+        recordingState.active = !recordingState.active;
+        if (recordingState.active) {
+            recordingState.notes = [];
+            recordingState.startTime = Date.now();
         }
-    }
+        this.textContent = recordingState.active ? '停止录音' : '开始录音';
+        this.classList.toggle('btn-danger', recordingState.active);
+        this.classList.toggle('btn-primary', !recordingState.active);
+    });
+    
+    playBackBtn.addEventListener('click', function() {
+        playBackRecordedNotes(recordingState.notes);
+    });
+    
+    clearBtn.addEventListener('click', function() {
+        recordingState.notes = [];
+        recordingState.active = false;
+        recordBtn.textContent = '开始录音';
+        recordBtn.classList.remove('btn-danger');
+        recordBtn.classList.add('btn-primary');
+        alert('录音已清除');
+    });
 }
 
 // 初始化C大调自然音阶练习页面
@@ -537,12 +496,6 @@ function initCMajorScalePractice() {
     function generateCMajorKeyboard(container) {
         container.innerHTML = '';
         
-        // 根据当前调式获取对应的音阶
-        const scaleNotes = getScaleNotesForKey(currentKeyScale);
-        
-        // 获取当前调式的第一个音符作为起始音
-        const firstNote = scaleNotes[0];
-        
         // 计算八度范围：起始音在currentOctave，结束音在currentOctave + 1
         const startOctave = currentOctave;
         const endOctave = currentOctave + 1;
@@ -651,6 +604,72 @@ function initCMajorScalePractice() {
             
             container.appendChild(key);
         }
+    }
+    
+    // 进入暂停状态（统一处理按钮状态与提示文案）
+    function enterPausedState() {
+        isPaused = true;
+        pauseRequested = false;
+        isPlaying = true; // 保持isPlaying为true，因为只是暂停
+        
+        startBtn.disabled = false;
+        pauseBtn.disabled = true;
+        stopBtn.disabled = false;
+        pauseBtn.innerHTML = '';
+        
+        resultText.textContent = '练习已暂停，点击开始按钮继续';
+        resultNote.textContent = '';
+    }
+    
+    // 进阶/困难模式下随机切换音组或调式（原两处重复逻辑合并）
+    function randomizeDifficultyChange() {
+        if (currentDifficulty === 'hard') {
+            // 困难模式：随机切换自然大调或音组
+            if (Math.random() > 0.5) {
+                randomizeKeyScale();
+            } else {
+                randomizeOctave();
+            }
+        } else if (currentDifficulty === 'intermediate') {
+            // 进阶模式：只随机切换音组
+            randomizeOctave();
+        }
+    }
+    
+    // 随机切换到其他自然大调
+    function randomizeKeyScale() {
+        const availableKeys = ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'F', 'Bb', 'Eb', 'Ab', 'Db'];
+        const otherKeys = availableKeys.filter(key => key !== currentKeyScale);
+        if (otherKeys.length === 0) return;
+        
+        currentKeyScale = otherKeys[Math.floor(Math.random() * otherKeys.length)];
+        // 映射调式名称到对应的单选框ID
+        const keyIdMap = {
+            'C': 'scale-c', 'G': 'scale-g', 'D': 'scale-d', 'A': 'scale-a',
+            'E': 'scale-e', 'B': 'scale-b', 'F#': 'scale-fs', 'F': 'scale-f',
+            'Bb': 'scale-bb', 'Eb': 'scale-eb', 'Ab': 'scale-ab', 'Db': 'scale-db'
+        };
+        const keyRadio = document.getElementById(keyIdMap[currentKeyScale]);
+        if (keyRadio) {
+            keyRadio.checked = true;
+        }
+        // 重新生成对应调式的钢琴键盘
+        updatePianoForKeyScale();
+    }
+    
+    // 随机切换到其他音组（排除C7组）
+    function randomizeOctave() {
+        const availableOctaves = [2, 3, 4, 5, 6];
+        const otherOctaves = availableOctaves.filter(octave => octave !== currentOctave);
+        if (otherOctaves.length === 0) return;
+        
+        currentOctave = otherOctaves[Math.floor(Math.random() * otherOctaves.length)];
+        const octaveRadio = document.getElementById(`octave-c${currentOctave}`);
+        if (octaveRadio) {
+            octaveRadio.checked = true;
+        }
+        // 重新生成钢琴键盘以适应新的音组
+        generateCMajorKeyboard(pianoKeyboard);
     }
     
     // 根据调式生成键盘音符模式
@@ -1073,108 +1092,17 @@ function initCMajorScalePractice() {
             
             // 停顿指定时间后继续
             timer = setTimeout(() => {
-                if (isPlaying) {
-                    // 检查是否有暂停请求
-                    if (pauseRequested) {
-                        // 执行暂停
-                        isPaused = true;
-                        pauseRequested = false;
-                        isPlaying = true; // 保持isPlaying为true，因为只是暂停
-                        
-                        // 更新按钮状态
-                        startBtn.disabled = false;
-                        pauseBtn.disabled = true;
-                        stopBtn.disabled = false;
-                        
-                        // 保持暂停按钮的原始状态，只是禁用它
-                        pauseBtn.innerHTML = '';
-                        
-                        // 更新结果显示
-                        resultText.textContent = '练习已暂停，点击开始按钮继续';
-                        resultNote.textContent = '';
-                        
-                        return;
-                    }
-                    
-                    // 当难度为进阶或困难时
-                    if (currentDifficulty === 'intermediate' || currentDifficulty === 'hard') {
-                        if (currentDifficulty === 'hard') {
-                            // 困难模式时，随机选择切换自然大调或音组
-                            const shouldChangeKey = Math.random() > 0.5;
-                            
-                            if (shouldChangeKey) {
-                                // 随机切换自然大调
-                                const availableKeys = ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'F', 'Bb', 'Eb', 'Ab', 'Db'];
-                                // 过滤掉当前调式，得到可选择的调式
-                                const availableOtherKeys = availableKeys.filter(key => key !== currentKeyScale);
-                                // 随机选择一个调式
-                                if (availableOtherKeys.length > 0) {
-                                    const randomIndex = Math.floor(Math.random() * availableOtherKeys.length);
-                                    currentKeyScale = availableOtherKeys[randomIndex];
-                                    // 更新对应的调式选择框
-                                    // 映射调式名称到正确的ID
-                                    const keyIdMap = {
-                                        'C': 'scale-c',
-                                        'G': 'scale-g',
-                                        'D': 'scale-d',
-                                        'A': 'scale-a',
-                                        'E': 'scale-e',
-                                        'B': 'scale-b',
-                                        'F#': 'scale-fs',
-                                        'F': 'scale-f',
-                                        'Bb': 'scale-bb',
-                                        'Eb': 'scale-eb',
-                                        'Ab': 'scale-ab',
-                                        'Db': 'scale-db'
-                                    };
-                                    const keyRadio = document.getElementById(keyIdMap[currentKeyScale]);
-                                    if (keyRadio) {
-                                        keyRadio.checked = true;
-                                    }
-                                    // 重新生成对应调式的钢琴键盘
-                                    updatePianoForKeyScale();
-                                }
-                            } else {
-                                // 随机选择其他音组
-                                // 定义可选的音组范围，排除C7组
-                                const availableOctaves = [2, 3, 4, 5, 6];
-                                // 过滤掉当前音组，得到可选择的音组
-                                const availableOtherOctaves = availableOctaves.filter(octave => octave !== currentOctave);
-                                // 随机选择一个音组
-                                if (availableOtherOctaves.length > 0) {
-                                    const randomIndex = Math.floor(Math.random() * availableOtherOctaves.length);
-                                    currentOctave = availableOtherOctaves[randomIndex];
-                                    // 更新对应的音组选择框
-                                    const octaveRadio = document.getElementById(`octave-c${currentOctave}`);
-                                    if (octaveRadio) {
-                                        octaveRadio.checked = true;
-                                    }
-                                    // 重新生成钢琴键盘以适应新的音组
-                                    generateCMajorKeyboard(pianoKeyboard);
-                                }
-                            }
-                        } else {
-                            // 进阶模式时，只随机选择其他音组
-                            // 定义可选的音组范围，排除C7组
-                            const availableOctaves = [2, 3, 4, 5, 6];
-                            // 过滤掉当前音组，得到可选择的音组
-                            const availableOtherOctaves = availableOctaves.filter(octave => octave !== currentOctave);
-                            // 随机选择一个音组
-                            if (availableOtherOctaves.length > 0) {
-                                const randomIndex = Math.floor(Math.random() * availableOtherOctaves.length);
-                                currentOctave = availableOtherOctaves[randomIndex];
-                                // 更新对应的音组选择框
-                                const octaveRadio = document.getElementById(`octave-c${currentOctave}`);
-                                if (octaveRadio) {
-                                    octaveRadio.checked = true;
-                                }
-                                // 重新生成钢琴键盘以适应新的音组
-                                generateCMajorKeyboard(pianoKeyboard);
-                            }
-                        }
-                    }
-                    playCMajorScale();
+                if (!isPlaying) return;
+                
+                // 检查是否有暂停请求
+                if (pauseRequested) {
+                    enterPausedState();
+                    return;
                 }
+                
+                // 进阶/困难模式下随机切换音组或调式
+                randomizeDifficultyChange();
+                playCMajorScale();
             }, currentPause * 1000);
         }
     }
@@ -1205,22 +1133,23 @@ function initCMajorScalePractice() {
         return keyScales[key] || keyScales['C']; // 默认返回C大调音阶
     }
     
-    // 高亮琴键
-    function highlightKey(note, octave) {
-        // 尝试直接查找
-        let key = document.querySelector(`[data-note="${note}"][data-octave="${octave}"]`);
+    // 查找琴键 DOM 元素（找不到时按等音关系匹配）
+    function findKeyElement(note, octave) {
+        const key = document.querySelector(`[data-note="${note}"][data-octave="${octave}"]`);
+        if (key) return key;
         
-        // 如果找不到，尝试查找等音
-        if (!key) {
-            const allKeys = document.querySelectorAll(`[data-octave="${octave}"]`);
-            for (const k of allKeys) {
-                if (isEnharmonic(k.dataset.note, note)) {
-                    key = k;
-                    break;
-                }
+        const allKeys = document.querySelectorAll(`[data-octave="${octave}"]`);
+        for (const k of allKeys) {
+            if (isEnharmonic(k.dataset.note, note)) {
+                return k;
             }
         }
-        
+        return null;
+    }
+    
+    // 高亮琴键
+    function highlightKey(note, octave) {
+        const key = findKeyElement(note, octave);
         if (key) {
             key.classList.add('highlight');
         }
@@ -1329,45 +1258,41 @@ function initCMajorScalePractice() {
         }
     }
     
+    // 计算音符的绝对半音值（基于等音物理频率，彻底杜绝等音误判，如 C#/Db、A#/Bb）
+    function getNoteSemitoneValue(note, octave) {
+        const semitones = {
+            'B#': 0, 'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3,
+            'E': 4, 'Fb': 4, 'E#': 5, 'F': 5, 'F#': 6, 'Gb': 6,
+            'G': 7, 'G#': 8, 'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11, 'Cb': 11
+        };
+        let oct = octave;
+        if (note === 'B#') oct += 1; // B#3 实际音高为 C4
+        if (note === 'Cb') oct -= 1; // Cb4 实际音高为 B3
+        const semi = semitones[note];
+        return (oct + 1) * 12 + (semi !== undefined ? semi : 0);
+    }
+    
     // 高亮结果琴键（绿色）
     function highlightResultKey(note, octave) {
-        // 尝试直接查找
-        let key = document.querySelector(`[data-note="${note}"][data-octave="${octave}"]`);
-        
-        // 如果找不到，尝试查找等音
-        if (!key) {
-            const allKeys = document.querySelectorAll(`[data-octave="${octave}"]`);
-            for (const k of allKeys) {
-                if (isEnharmonic(k.dataset.note, note)) {
-                    key = k;
-                    break;
-                }
-            }
-        }
-        
+        const key = findKeyElement(note, octave);
         if (key) {
             key.classList.add('result-highlight');
         }
     }
     
+    // 高亮错误琴键（红色）
+    function highlightErrorKey(note, octave) {
+        const key = findKeyElement(note, octave);
+        if (key) {
+            key.classList.add('error-highlight');
+        }
+    }
+    
     // 移除单个琴键高亮
     function removeHighlight(note, octave) {
-        // 尝试直接查找
-        let key = document.querySelector(`[data-note="${note}"][data-octave="${octave}"]`);
-        
-        // 如果找不到，尝试查找等音
-        if (!key) {
-            const allKeys = document.querySelectorAll(`[data-octave="${octave}"]`);
-            for (const k of allKeys) {
-                if (isEnharmonic(k.dataset.note, note)) {
-                    key = k;
-                    break;
-                }
-            }
-        }
-        
+        const key = findKeyElement(note, octave);
         if (key) {
-            key.classList.remove('highlight', 'result-highlight');
+            key.classList.remove('highlight', 'result-highlight', 'error-highlight');
         }
     }
     
@@ -1375,7 +1300,7 @@ function initCMajorScalePractice() {
     function removeAllHighlights() {
         const keys = document.querySelectorAll('.key');
         keys.forEach(key => {
-            key.classList.remove('highlight', 'result-highlight');
+            key.classList.remove('highlight', 'result-highlight', 'error-highlight');
         });
     }
     
@@ -1386,20 +1311,26 @@ function initCMajorScalePractice() {
         const clickedNote = this.dataset.note;
         const clickedOctave = parseInt(this.dataset.octave);
         
-        // 检查用户回答是否正确
-        const isCorrect = clickedNote === examRandomNote && clickedOctave === examRandomOctave;
+        // 乐理等音绝对半音比对，避免等音名误判（如 A# vs Bb、C# vs Db）
+        const clickedSemitone = getNoteSemitoneValue(clickedNote, clickedOctave);
+        const examSemitone = getNoteSemitoneValue(examRandomNote, examRandomOctave);
+        const isCorrect = clickedSemitone === examSemitone;
         
         // 计分
         if (isCorrect) {
             examScore += 5; // 每组5分
+            resultText.textContent = '回答正确！ (+5分)';
+            const solfege = getSolfegeLabel(examRandomNote, currentKeyScale);
+            resultNote.textContent = `${examRandomNote}${examRandomOctave}${solfege ? '（唱名 ' + solfege + '）' : ''}`;
+            highlightResultKey(examRandomNote, examRandomOctave);
+        } else {
+            resultText.textContent = '回答错误！';
+            const correctSolfege = getSolfegeLabel(examRandomNote, currentKeyScale);
+            const userSolfege = getSolfegeLabel(clickedNote, currentKeyScale);
+            resultNote.innerHTML = `你按的是：<span style="color:#e53e3e;font-weight:bold;">${clickedNote}${clickedOctave}${userSolfege ? '(' + userSolfege + ')' : ''}</span>，正确是：<span style="color:#2f855a;font-weight:bold;">${examRandomNote}${examRandomOctave}${correctSolfege ? '(' + correctSolfege + ')' : ''}</span>`;
+            highlightErrorKey(clickedNote, clickedOctave);
+            highlightResultKey(examRandomNote, examRandomOctave);
         }
-        
-        // 显示结果
-        resultText.textContent = isCorrect ? '回答正确！' : '回答错误！';
-        resultNote.textContent = examRandomNote + examRandomOctave;
-        
-        // 高亮对应的琴键
-        highlightResultKey(examRandomNote, examRandomOctave);
         
         // 再次播放正确的随机音
         const fixedBPM = 90;
@@ -1447,147 +1378,92 @@ function initCMajorScalePractice() {
         } else {
             // 继续下一组
             setTimeout(() => {
-                if (isPlaying) {
-                    // 检查是否有暂停请求
-                    if (pauseRequested) {
-                        // 执行暂停
-                        isPaused = true;
-                        pauseRequested = false;
-                        isPlaying = true; // 保持isPlaying为true，因为只是暂停
-                        
-                        // 更新按钮状态
-                        startBtn.disabled = false;
-                        pauseBtn.disabled = true;
-                        stopBtn.disabled = false;
-                        
-                        // 保持暂停按钮的原始状态，只是禁用它
-                        pauseBtn.innerHTML = '';
-                        
-                        // 更新结果显示
-                        resultText.textContent = '练习已暂停，点击开始按钮继续';
-                        resultNote.textContent = '';
-                        
-                        return;
-                    }
-                    
-                    // 当难度为进阶或困难时
-                    if (currentDifficulty === 'intermediate' || currentDifficulty === 'hard') {
-                        if (currentDifficulty === 'hard') {
-                            // 困难模式时，随机选择切换自然大调或音组
-                            const shouldChangeKey = Math.random() > 0.5;
-                            
-                            if (shouldChangeKey) {
-                                // 随机切换自然大调
-                                const availableKeys = ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'F', 'Bb', 'Eb', 'Ab', 'Db'];
-                                // 过滤掉当前调式，得到可选择的调式
-                                const availableOtherKeys = availableKeys.filter(key => key !== currentKeyScale);
-                                // 随机选择一个调式
-                                if (availableOtherKeys.length > 0) {
-                                    const randomIndex = Math.floor(Math.random() * availableOtherKeys.length);
-                                    currentKeyScale = availableOtherKeys[randomIndex];
-                                    // 更新对应的调式选择框
-                                    // 映射调式名称到正确的ID
-                                    const keyIdMap = {
-                                        'C': 'scale-c',
-                                        'G': 'scale-g',
-                                        'D': 'scale-d',
-                                        'A': 'scale-a',
-                                        'E': 'scale-e',
-                                        'B': 'scale-b',
-                                        'F#': 'scale-fs',
-                                        'F': 'scale-f',
-                                        'Bb': 'scale-bb',
-                                        'Eb': 'scale-eb',
-                                        'Ab': 'scale-ab',
-                                        'Db': 'scale-db'
-                                    };
-                                    const keyRadio = document.getElementById(keyIdMap[currentKeyScale]);
-                                    if (keyRadio) {
-                                        keyRadio.checked = true;
-                                    }
-                                    // 重新生成对应调式的钢琴键盘
-                                    updatePianoForKeyScale();
-                                }
-                            } else {
-                                // 随机选择其他音组
-                                // 定义可选的音组范围，排除C7组
-                                const availableOctaves = [2, 3, 4, 5, 6];
-                                // 过滤掉当前音组，得到可选择的音组
-                                const availableOtherOctaves = availableOctaves.filter(octave => octave !== currentOctave);
-                                // 随机选择一个音组
-                                if (availableOtherOctaves.length > 0) {
-                                    const randomIndex = Math.floor(Math.random() * availableOtherOctaves.length);
-                                    currentOctave = availableOtherOctaves[randomIndex];
-                                    // 更新对应的音组选择框
-                                    const octaveRadio = document.getElementById(`octave-c${currentOctave}`);
-                                    if (octaveRadio) {
-                                        octaveRadio.checked = true;
-                                    }
-                                    // 重新生成钢琴键盘以适应新的音组
-                                    generateCMajorKeyboard(pianoKeyboard);
-                                }
-                            }
-                        } else {
-                            // 进阶模式时，只随机选择其他音组
-                            // 定义可选的音组范围，排除C7组
-                            const availableOctaves = [2, 3, 4, 5, 6];
-                            // 过滤掉当前音组，得到可选择的音组
-                            const availableOtherOctaves = availableOctaves.filter(octave => octave !== currentOctave);
-                            // 随机选择一个音组
-                            if (availableOtherOctaves.length > 0) {
-                                const randomIndex = Math.floor(Math.random() * availableOtherOctaves.length);
-                                currentOctave = availableOtherOctaves[randomIndex];
-                                // 更新对应的音组选择框
-                                const octaveRadio = document.getElementById(`octave-c${currentOctave}`);
-                                if (octaveRadio) {
-                                    octaveRadio.checked = true;
-                                }
-                                // 重新生成钢琴键盘以适应新的音组
-                                generateCMajorKeyboard(pianoKeyboard);
-                            }
-                        }
-                    }
-                    playCMajorScale();
+                if (!isPlaying) return;
+                
+                // 检查是否有暂停请求
+                if (pauseRequested) {
+                    enterPausedState();
+                    return;
                 }
+                
+                // 进阶/困难模式下随机切换音组或调式
+                randomizeDifficultyChange();
+                playCMajorScale();
             }, currentPause * 1000);
         }
     }
 }
 
-// 播放录音（简化版）
+// 按录制时序回放录音
 function playBackRecordedNotes(notes) {
-    if (notes.length === 0) {
+    if (!notes || notes.length === 0) {
         alert('没有录音内容');
         return;
     }
     
-    notes.forEach((note, index) => {
+    notes.forEach(record => {
         setTimeout(() => {
-            audioSystem.playNote(note.note, note.octave, note.duration);
-        }, index * 500);
+            audioSystem.playNote(record.note, record.octave, 1.0);
+        }, record.delay);
     });
 }
 
-// 添加一些键盘快捷键支持
+// 电脑键盘弹奏映射（双八度双手弹奏）：
+// 底排 Z–M = 低音组 C3–B3（1=C#3, 2=D#3, 3=F#3, 4=G#3, 5=A#3）
+// 中排 A–K = 中音组 C4–C5（W=C#4, E=D#4, T=F#4, Y=G#4, U=A#4, O=C#5）
+const KEY_NOTE_MAP = {
+    // 低音组（八度 3，低音 1̣–7̣，左手区）
+    'z': { note: 'C', octave: 3 },
+    '1': { note: 'C#', octave: 3 },
+    'x': { note: 'D', octave: 3 },
+    '2': { note: 'D#', octave: 3 },
+    'c': { note: 'E', octave: 3 },
+    'v': { note: 'F', octave: 3 },
+    '3': { note: 'F#', octave: 3 },
+    'b': { note: 'G', octave: 3 },
+    '4': { note: 'G#', octave: 3 },
+    'n': { note: 'A', octave: 3 },
+    '5': { note: 'A#', octave: 3 },
+    'm': { note: 'B', octave: 3 },
+
+    // 中高音组（八度 4–5，中音 1–7，右手区）
+    'a': { note: 'C', octave: 4 },
+    'w': { note: 'C#', octave: 4 },
+    's': { note: 'D', octave: 4 },
+    'e': { note: 'D#', octave: 4 },
+    'd': { note: 'E', octave: 4 },
+    'f': { note: 'F', octave: 4 },
+    't': { note: 'F#', octave: 4 },
+    'g': { note: 'G', octave: 4 },
+    'y': { note: 'G#', octave: 4 },
+    'h': { note: 'A', octave: 4 },
+    'u': { note: 'A#', octave: 4 },
+    'j': { note: 'B', octave: 4 },
+    'k': { note: 'C', octave: 5 },
+    'o': { note: 'C#', octave: 5 },
+    'l': { note: 'D', octave: 5 }
+};
+
 document.addEventListener('keydown', function(e) {
-    // 简单的键盘映射，对应C大调音阶
-    const keyMap = {
-        'a': 'C',
-        's': 'D',
-        'd': 'E',
-        'f': 'F',
-        'g': 'G',
-        'h': 'A',
-        'j': 'B',
-        'k': 'C'
-    };
-    
     const tag = (e.target && e.target.tagName) || '';
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (e.repeat) return;
 
-    const note = keyMap[e.key.toLowerCase()];
-    if (note) {
+    const key = KEY_NOTE_MAP[e.key.toLowerCase()];
+    if (key) {
         e.preventDefault();
-        audioSystem.playNote(note, 4, 1.0);
+        audioSystem.playNote(key.note, key.octave, 1.0);
+        recordNoteIfRecording(key.note, key.octave);
+
+        // 让页面上对应的琴键高亮（88键页面上可直观看到）
+        const keyEl = document.querySelector('.key[data-note="' + key.note + '"][data-octave="' + key.octave + '"]');
+        if (keyEl) {
+            keyEl.classList.add('active');
+            setTimeout(function() { keyEl.classList.remove('active'); }, 150);
+            // 若琴键在可视区外，键盘自动跟过去（滑动条同步）
+            if (window.pianoFollowKey) window.pianoFollowKey(keyEl);
+        }
+        // 五线谱实时对照（模拟钢琴页）
+        if (window.drawStaff) window.drawStaff(key.note, key.octave);
     }
 });
