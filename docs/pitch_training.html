@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音高训练 - 听音训练</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="static/css/style.css">
+    <style>
+        /* 页面背景：Kitty 唱歌插画 + 白色柔光，与全站统一 */
+        body {
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.45)),
+                url('static/images/kitty_bg.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-color: #f7edf2;
+        }
+        .pitch-page {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 2rem 1rem 4rem;
+        }
+        .pitch-page h2 {
+            margin-bottom: 0.5rem;
+            color: #b03a6b;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .pitch-hint {
+            color: #6b4a5a;
+            margin-bottom: 1.5rem;
+        }
+        .pitch-panel {
+            background: linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(255,247,251,0.88) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(176, 58, 107, 0.25);
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(60, 20, 40, 0.10);
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem 1.5rem;
+            align-items: flex-end;
+            margin-bottom: 1.5rem;
+        }
+        .pitch-panel .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            min-width: 160px;
+            flex: 1;
+        }
+        .pitch-panel label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #5a3a4a;
+        }
+        .pitch-panel select {
+            padding: 0.5rem 0.7rem;
+            border: 1px solid #d9bcc9;
+            border-radius: 8px;
+            background: #fff;
+        }
+        .pitch-score {
+            font-size: 1.05rem;
+            margin-bottom: 1.25rem;
+        }
+        .pitch-stage {
+            background: linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(255,247,251,0.88) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(176, 58, 107, 0.2);
+            border-radius: 14px;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(60, 20, 40, 0.10);
+        }
+        .pitch-status {
+            min-height: 1.6rem;
+            margin-bottom: 1.25rem;
+            font-size: 1.1rem;
+        }
+        .pitch-status.ok { color: #198754; }
+        .pitch-status.bad { color: #dc3545; }
+        .pitch-actions,
+        .pitch-answer-area {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        .pitch-choice-btn {
+            min-width: 160px;
+        }
+        .pitch-fill-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .pitch-fill-row input {
+            width: 140px;
+            text-align: center;
+            padding: 0.5rem;
+            border: 1px solid #a0aec0;
+            border-radius: 4px;
+        }
+        .pitch-reveal {
+            min-height: 1.5rem;
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-top: 0.75rem;
+        }
+        .pitch-interval {
+            color: #6c757d;
+            font-size: 0.95rem;
+            margin-top: 0.35rem;
+        }
+        .pitch-check {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            min-width: 160px;
+            padding-bottom: 0.35rem;
+        }
+        .pitch-check input {
+            width: 1rem;
+            height: 1rem;
+        }
+        .pitch-summary {
+            text-align: left;
+            max-width: 520px;
+            margin: 1.25rem auto 0;
+        }
+        .pitch-summary li {
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+        .pitch-summary .ok { color: #198754; }
+        .pitch-summary .bad { color: #dc3545; }
+        .pitch-review-btn {
+            flex-shrink: 0;
+        }
+        /* 旋律走向题型 - 空间音高阶梯矩阵点选（方案 A） */
+        .contour-matrix-container {
+            position: relative;
+            max-width: 620px;
+            margin: 0 auto 1.25rem;
+            padding: 1.25rem 1rem 1rem;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 245, 250, 0.9) 100%);
+            border-radius: 14px;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(176, 58, 107, 0.08);
+            border: 1px solid rgba(176, 58, 107, 0.2);
+        }
+        
+        .contour-matrix-board {
+            position: relative;
+            min-height: 200px;
+        }
+        
+        .contour-wave-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+        
+        .contour-matrix-cols {
+            display: flex;
+            justify-content: space-around;
+            align-items: stretch;
+            position: relative;
+            z-index: 3;
+            height: 190px;
+        }
+        
+        .contour-matrix-col {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            flex: 1;
+            padding: 0 0.35rem;
+        }
+        
+        .contour-col-title {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #8a5a6e;
+            margin-bottom: 0.4rem;
+        }
+        
+        .contour-level-btn {
+            width: 100%;
+            max-width: 72px;
+            height: 38px;
+            border-radius: 8px;
+            border: 1.5px solid #e2d3dc;
+            background: rgba(255, 255, 255, 0.9);
+            color: #6b4a5a;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+        }
+        
+        .contour-level-btn:hover {
+            border-color: #b03a6b;
+            color: #b03a6b;
+            transform: scale(1.04);
+        }
+        
+        /* 选中高亮状态 */
+        .contour-level-btn.active.lvl-high {
+            background: linear-gradient(135deg, #f472b6, #ec4899);
+            border-color: #db2777;
+            color: #fff;
+            box-shadow: 0 0 12px rgba(236, 72, 153, 0.45);
+        }
+        
+        .contour-level-btn.active.lvl-mid {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            border-color: #d97706;
+            color: #fff;
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.45);
+        }
+        
+        .contour-level-btn.active.lvl-low {
+            background: linear-gradient(135deg, #34d399, #10b981);
+            border-color: #059669;
+            color: #fff;
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.45);
+        }
+        
+        .contour-matrix-tip {
+            font-size: 0.82rem;
+            color: #8a6a78;
+            margin-top: 0.6rem;
+            text-align: center;
+        }
+        
+        .contour-contrast-actions {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            margin-top: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-custom">
+        <div class="container navbar-container">
+            <a class="navbar-brand" href="index.html">听音训练</a>
+            <div class="navbar-nav mx-auto">
+                <a class="nav-link" href="c_major_scale.html">自然大调音阶训练</a>
+                <a class="nav-link active" href="pitch_training.html">音高训练</a>
+                <a class="nav-link" href="jianpu_training.html">简谱听写</a>
+                <a class="nav-link" href="piano_simulator.html">自由训练·模拟钢琴</a>
+            </div>
+            <!-- 背景图：Kitty 唱歌插画 -->
+        </div>
+    </nav>
+
+    <main>
+        <section class="pitch-page">
+            <h2 class="text-center">音高训练</h2>
+            <p class="text-center pitch-hint" id="pitch-hint">先后播放两个音。简单档音程远，困难档音程近。</p>
+
+            <div class="pitch-panel">
+                <div class="control-group">
+                    <label for="pitch-session">训练形式</label>
+                    <select id="pitch-session">
+                        <option value="practice">练习</option>
+                        <option value="exam">考试（10题）</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="pitch-mode">题型</label>
+                    <select id="pitch-mode">
+                        <option value="compare">比音高</option>
+                        <option value="choice">听音名（选择题）</option>
+                        <option value="fill">听音名（填空题）</option>
+                        <option value="octave">八度练习</option>
+                        <option value="step">全音 / 半音</option>
+                        <option value="contour">旋律走向（↑ → ↓）</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="pitch-difficulty">难度</label>
+                    <select id="pitch-difficulty">
+                        <option value="easy">简单（远音程）</option>
+                        <option value="medium">中等</option>
+                        <option value="hard">困难（近音程）</option>
+                    </select>
+                </div>
+                <div class="control-group" id="contour-gap-wrap" style="display: none;">
+                    <label for="contour-gap">音间隔（走向题）</label>
+                    <select id="contour-gap">
+                        <option value="10">10 秒</option>
+                        <option value="5">5 秒</option>
+                        <option value="2" selected>2 秒</option>
+                        <option value="1">1 秒</option>
+                    </select>
+                </div>
+                <label class="pitch-check" id="pitch-replay-wrap">
+                    <input type="checkbox" id="pitch-allow-replay" checked>
+                    考试允许重听
+                </label>
+                <button class="btn btn-primary" id="pitch-new">开始练习</button>
+                <button class="btn btn-secondary" id="pitch-replay">重听</button>
+            </div>
+
+            <p class="text-center pitch-score">
+                正确 <span id="pitch-correct">0</span> / <span id="pitch-total">0</span>
+                ，正确率 <span id="pitch-rate">-</span>
+                <span id="pitch-progress"></span>
+            </p>
+
+            <div class="pitch-stage">
+                <p class="pitch-status" id="pitch-status">选择设置后开始</p>
+                <div class="pitch-answer-area" id="pitch-answer-area"></div>
+                <div class="pitch-reveal" id="pitch-reveal"></div>
+                <div class="pitch-interval" id="pitch-interval"></div>
+                <ol class="pitch-summary" id="pitch-summary"></ol>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container text-center">
+            <p>Copyright © 2026-2046 听音训练 fetraining.com All Rights Reserved</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="static/js/keymapping.js"></script>
+    <script src="static/js/audio.js"></script>
+    <script src="static/js/script.js"></script>
+    <script src="static/js/pitch_training.js"></script>
+</body>
+</html>

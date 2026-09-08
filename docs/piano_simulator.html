@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模拟钢琴 - 听音训练</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="static/css/style.css">
+    <style>
+        /* 模拟钢琴页面样式 */
+        body {
+            /* 页面背景：Kitty 唱歌插画 + 白色柔光，与全站统一 */
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.45)),
+                url('static/images/kitty_bg.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-color: #f7edf2;
+            font-family: 'Georgia', 'Times New Roman', serif;
+        }
+        
+        .navbar-custom {
+            /* 导航栏同样使用 Kitty 柔光背景，与全站统一 */
+            background-image: linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.55)), url('static/images/kitty_bg.jpg');
+            background-size: cover;
+            background-position: center 20%;
+            background-repeat: no-repeat;
+            background-color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .navbar-brand {
+            color: #5a3a4a;
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+        
+        .nav-link {
+            color: #6b4a5a;
+            margin: 0 0.5rem;
+        }
+        
+        .nav-link:hover {
+            color: #b03a6b;
+        }
+        
+        .nav-link.active {
+            color: #b03a6b;
+            font-weight: bold;
+        }
+        
+        .container {
+            max-width: 1400px;
+        }
+        
+        .piano-container {
+            /* 深酒红渐变底，与玫瑰主题呼应 */
+            background: linear-gradient(135deg, #4a2036 0%, #331522 100%);
+            border-radius: 14px;
+            box-shadow: 0 12px 32px rgba(60, 20, 40, 0.28);
+            padding: 1.6rem 1.8rem 2rem;
+            margin: 2rem auto;
+            max-width: 100%;
+            /* 容器自身固定居中，不产生滚动，由内部 piano-viewport 独立滚动 */
+            overflow: visible;
+        }
+        
+        /* 独立钢琴键盘可视窗口（只滚动琴键，其他区域固定不动） */
+        .piano-viewport {
+            width: 100%;
+            overflow-x: auto;
+            scrollbar-width: none;
+            position: relative;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.25);
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.45);
+            padding: 0.5rem 0;
+        }
+        
+        .piano-viewport::-webkit-scrollbar {
+            display: none;
+        }
+        
+        /* ===== 顶部 88 键微型键盘缩略图导航（Minimap Navigation） ===== */
+        .piano-minimap-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            max-width: 960px;
+            width: 100%;
+            margin: 0 auto 1.4rem;
+            padding: 0.45rem 0.75rem;
+            background: rgba(15, 10, 14, 0.85);
+            border-radius: 30px;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6), 0 4px 14px rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .minimap-nav-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #272a33;
+            color: #f1f5f9;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+            flex-shrink: 0;
+            padding: 0;
+        }
+        
+        .minimap-nav-btn:hover {
+            background: #3b4252;
+            color: #38bdf8;
+            transform: scale(1.08);
+            border-color: #38bdf8;
+        }
+        
+        .minimap-nav-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .minimap-track {
+            position: relative;
+            flex: 1;
+            height: 38px;
+            background: #11141b;
+            border-radius: 6px;
+            overflow: hidden;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .minimap-keyboard {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        /* 缩略键盘白键与黑键 */
+        .mini-key {
+            position: absolute;
+            top: 0;
+            box-sizing: border-box;
+        }
+        
+        .mini-key.white {
+            height: 100%;
+            background: #cbd5e1;
+            border-right: 1px solid #475569;
+            border-bottom: 1px solid #334155;
+            z-index: 1;
+        }
+        
+        .mini-key.black {
+            height: 60%;
+            background: #0f172a;
+            border: 1px solid #000;
+            border-radius: 0 0 1px 1px;
+            z-index: 2;
+        }
+        
+        /* 视窗外暗化半透明遮罩 */
+        .minimap-mask-left, .minimap-mask-right {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            background: rgba(10, 10, 15, 0.62);
+            pointer-events: none;
+            z-index: 3;
+            transition: opacity 0.1s ease;
+        }
+        
+        .minimap-mask-left { left: 0; }
+        .minimap-mask-right { right: 0; }
+        
+        /* 蓝色发光视窗框（Viewport Finder） */
+        .minimap-viewport {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            border: 2.5px solid #38bdf8;
+            border-radius: 5px;
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.85), inset 0 0 10px rgba(56, 189, 248, 0.28);
+            background: rgba(56, 189, 248, 0.12);
+            cursor: grab;
+            z-index: 10;
+            box-sizing: border-box;
+            transition: border-color 0.15s ease;
+        }
+        
+        .minimap-viewport:hover {
+            border-color: #7dd3fc;
+            box-shadow: 0 0 18px rgba(125, 211, 252, 0.95), inset 0 0 12px rgba(125, 211, 252, 0.35);
+        }
+        
+        .minimap-viewport.dragging {
+            cursor: grabbing;
+            border-color: #bae6fd;
+        }
+        
+        .piano-keyboard {
+            display: flex;
+            position: relative;
+            padding: 1rem 0;
+            /* 宽度随内容收缩后居中，避免 overflow 居中裁剪导致左侧琴键无法拖到 */
+            width: max-content;
+            margin: 0 auto;
+            cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        .piano-keyboard.dragging {
+            cursor: grabbing;
+        }
+        
+        .piano-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .piano-header h1 {
+            color: #ffe3ee;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+        }
+        
+        .piano-header p {
+            color: rgba(255, 231, 240, 0.92);
+            font-size: 1.2rem;
+        }
+        
+        .piano-controls {
+            text-align: center;
+            margin-top: 0.5rem;
+        }
+        
+        .piano-controls .btn {
+            margin: 0 0.35rem;
+        }
+        
+        .piano-tip {
+            color: rgba(255, 231, 240, 0.85);
+            text-align: center;
+            font-size: 0.95rem;
+            margin: 0.85rem 0 0;
+        }
+        
+        /* 钢琴键样式 */
+        .key {
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            padding-bottom: 1rem;
+            font-weight: bold;
+            font-family: inherit;
+            transition: all 0.1s ease;
+            border-radius: 0 0 4px 4px;
+        }
+        
+        /* 按下高亮效果（自弹奏反馈） */
+        .key.active {
+            transform: translateY(2px);
+            filter: brightness(0.8);
+        }
+        
+        .key.white {
+            width: 70px;
+            height: 300px;
+            background: linear-gradient(180deg, #ffffff 0%, #f7fafc 100%);
+            color: #2d3748;
+            border: 1px solid #e2e8f0;
+            margin-right: 4px;
+            z-index: 1;
+        }
+        
+        .key.black {
+            width: 45px;
+            height: 180px;
+            background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%);
+            color: white;
+            margin: 0 -22.5px;
+            z-index: 2;
+        }
+        
+        .key:hover {
+            transform: translateY(-2px);
+        }
+        
+        .key:active {
+            transform: translateY(0);
+        }
+        
+        .key.white:active {
+            background: linear-gradient(180deg, #ebf8ff 0%, #bee3f8 100%);
+        }
+        
+        .key.black:active {
+            background: linear-gradient(180deg, #4299e1 0%, #3182ce 100%);
+        }
+        
+        /* 音名显示样式 */
+        .note-name {
+            font-size: 0.75rem;
+            margin-bottom: 0.2rem;
+            color: #64748b;
+            font-weight: 600;
+        }
+        
+        .key.black .note-name {
+            font-size: 0.7rem;
+            color: #cbd5e1;
+            margin-bottom: 0.25rem;
+        }
+        
+        .enharmonic-name {
+            font-size: 0.65rem;
+            color: #94a3b8;
+        }
+        
+        .key.black .enharmonic-name {
+            font-size: 0.6rem;
+            color: #64748b;
+        }
+        
+        /* ===== 白键简谱彩色唱名徽章（参考专业琴键标记） ===== */
+        .jianpu-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            font-size: 1.15rem;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 0.55rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            user-select: none;
+            position: relative;
+        }
+        
+        /* 中音区（C4 组）：淡薄荷绿 */
+        .badge-c4 {
+            background-color: #dcfce7;
+            border: 1.5px solid #86efac;
+            color: #15803d;
+        }
+        
+        /* 高音区（C5 组）：淡天蓝 */
+        .badge-c5 {
+            background-color: #e0f2fe;
+            border: 1.5px solid #7dd3fc;
+            color: #0369a1;
+        }
+        
+        /* 倍高音区（C6 组）：淡粉紫 */
+        .badge-c6 {
+            background-color: #f3e8ff;
+            border: 1.5px solid #d8b4fe;
+            color: #7e22ce;
+        }
+        
+        /* 低音区（C3 组）：淡黄绿 */
+        .badge-c3 {
+            background-color: #ecfccb;
+            border: 1.5px solid #bef264;
+            color: #3f6212;
+        }
+        
+        /* 倍低音区（C2 组及以下）：淡米黄 */
+        .badge-low {
+            background-color: #fef3c7;
+            border: 1.5px solid #fde047;
+            color: #854d0e;
+        }
+        
+        /* 超高音区（C7 组及以上）：淡玫瑰粉 */
+        .badge-high {
+            background-color: #ffe4e6;
+            border: 1.5px solid #fecdd3;
+            color: #be123c;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 1400px) {
+            .key.white {
+                width: 65px;
+                height: 280px;
+                margin-right: 3px;
+            }
+            
+            .key.black {
+                width: 42px;
+                height: 170px;
+                margin: 0 -21px;
+            }
+        }
+        
+        @media (max-width: 1200px) {
+            .key.white {
+                width: 60px;
+                height: 250px;
+                margin-right: 3px;
+            }
+            
+            .key.black {
+                width: 38px;
+                height: 150px;
+                margin: 0 -19px;
+            }
+            
+            .note-name {
+                font-size: 0.8rem;
+            }
+            
+            .enharmonic-name {
+                font-size: 0.6rem;
+            }
+        }
+        
+        @media (max-width: 992px) {
+            .key.white {
+                width: 55px;
+                height: 230px;
+                margin-right: 2px;
+            }
+            
+            .key.black {
+                width: 35px;
+                height: 140px;
+                margin: 0 -17.5px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .key.white {
+                width: 45px;
+                height: 200px;
+                margin-right: 2px;
+            }
+            
+            .key.black {
+                width: 30px;
+                height: 120px;
+                margin: 0 -15px;
+            }
+            
+            .note-name {
+                font-size: 0.7rem;
+            }
+            
+            .enharmonic-name {
+                font-size: 0.5rem;
+            }
+            
+            .piano-header h1 {
+                font-size: 2rem;
+            }
+            
+            .piano-header p {
+                font-size: 1rem;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .key.white {
+                width: 40px;
+                height: 180px;
+                margin-right: 1px;
+            }
+            
+            .key.black {
+                width: 25px;
+                height: 110px;
+                margin: 0 -12.5px;
+            }
+            
+            .note-name {
+                font-size: 0.6rem;
+            }
+            
+            .enharmonic-name {
+                font-size: 0.4rem;
+            }
+            
+            .piano-header h1 {
+                font-size: 1.8rem;
+            }
+        }
+        
+        /* ===== 五线谱实时对照（置于钢琴上方，居中精致呈现） ===== */
+        .staff-panel {
+            background: linear-gradient(180deg, rgba(255, 253, 248, 0.95) 0%, rgba(253, 241, 246, 0.95) 100%);
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(60, 20, 40, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(176, 58, 107, 0.22);
+            padding: 1.2rem 1.6rem 1.4rem;
+            margin: 1.5rem auto 1.8rem;
+            max-width: 720px;
+            width: 100%;
+            text-align: center;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        
+        .staff-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            margin-bottom: 0.8rem;
+        }
+        
+        .staff-panel .staff-title {
+            color: #8a4a62;
+            font-weight: 600;
+            font-size: 1.05rem;
+            letter-spacing: 1px;
+            margin: 0;
+        }
+        
+        /* 谱号模式切换按钮组 */
+        .clef-mode-selector {
+            display: inline-flex;
+            background: rgba(176, 58, 107, 0.08);
+            border-radius: 20px;
+            padding: 2px;
+            border: 1px solid rgba(176, 58, 107, 0.2);
+            gap: 2px;
+        }
+        
+        .clef-btn {
+            border: none;
+            background: transparent;
+            padding: 0.25rem 0.65rem;
+            border-radius: 16px;
+            font-size: 0.8rem;
+            color: #7a4a5e;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        
+        .clef-btn:hover {
+            color: #b03a6b;
+            background: rgba(176, 58, 107, 0.06);
+        }
+        
+        .clef-btn.active {
+            background: #b03a6b;
+            color: #fff;
+            box-shadow: 0 2px 6px rgba(176, 58, 107, 0.35);
+            font-weight: 600;
+        }
+        
+        .staff-wrap {
+            position: relative;
+            display: inline-block;
+            max-width: 100%;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+        }
+        
+        #staff-svg {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .staff-note-name {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #b03a6b;
+            margin-bottom: 0.4rem;
+            font-family: 'Georgia', serif;
+        }
+        
+        .staff-caption {
+            font-size: 0.8rem;
+            color: #9a7a88;
+            margin-top: 0.6rem;
+        }
+        
+        .staff-wrap::-webkit-scrollbar {
+            height: 7px;
+        }
+        
+        .staff-wrap::-webkit-scrollbar-thumb {
+            background: rgba(176, 58, 107, 0.3);
+            border-radius: 4px;
+        }
+        
+        .staff-wrap::-webkit-scrollbar-track {
+            background: rgba(176, 58, 107, 0.06);
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-custom">
+        <div class="container navbar-container">
+            <a class="navbar-brand" href="index.html">听音训练</a>
+            <div class="navbar-nav mx-auto">
+                <a class="nav-link" href="c_major_scale.html">自然大调音阶训练</a>
+                <a class="nav-link" href="pitch_training.html">音高训练</a>
+                <a class="nav-link" href="jianpu_training.html">简谱听写</a>
+                <a class="nav-link active" href="piano_simulator.html">自由训练·模拟钢琴</a>
+            </div>
+            <!-- 背景图：Kitty 唱歌插画 -->
+        </div>
+    </nav>
+
+    <!-- 页面内容 -->
+    <main>
+        <div class="container">
+            <!-- 五线谱实时对照（置于钢琴正上方） -->
+            <div class="staff-panel">
+                <div class="staff-header-row">
+                    <div class="staff-title">五线谱对照</div>
+                    <div class="clef-mode-selector" id="clef-mode-selector">
+                        <button type="button" class="clef-btn active" data-mode="both" title="大谱表：高低双谱表同时显示（钢琴标准）">大谱表 (双谱表)</button>
+                        <button type="button" class="clef-btn" data-mode="auto" title="智能自适应：中央C及以上高音谱表，以下低音谱表">智能切换</button>
+                        <button type="button" class="clef-btn" data-mode="treble" title="只显示高音谱表 (G谱号)">高音谱表 𝄞</button>
+                        <button type="button" class="clef-btn" data-mode="bass" title="只显示低音谱表 (F谱号)">低音谱表 𝄢</button>
+                    </div>
+                </div>
+                <div class="staff-note-name" id="staff-note-name">C4</div>
+                <div class="staff-wrap" id="staff-wrap">
+                    <svg id="staff-svg" width="460" height="240" viewBox="0 0 460 240" xmlns="http://www.w3.org/2000/svg" aria-label="五线谱对照图"></svg>
+                </div>
+                <div class="staff-caption" id="staff-caption">点击琴键或按键盘快捷键，实时显示对应音在五线谱上的位置</div>
+            </div>
+
+            <!-- 钢琴容器 -->
+            <div class="piano-container">
+                <div class="piano-header">
+                    <h1>自由训练 · 模拟钢琴</h1>
+                    <p>88 键完整键盘，显示完整音名与等音名，可自由弹奏、录音回放</p>
+                    <div style="margin-top: 0.75rem;">
+                        <label for="sim-audio-mode" style="color: rgba(255, 231, 240, 0.9); margin-right: 0.5rem;">音源</label>
+                        <select id="sim-audio-mode" class="form-select form-select-sm" style="display: inline-block; width: auto;">
+                            <option value="samples" selected>真实钢琴采样</option>
+                            <option value="synthetic">合成音色</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- 顶部 88 键微型键盘缩略图导航栏（Minimap Navigation） -->
+                <div class="piano-minimap-bar">
+                    <button class="minimap-nav-btn" id="minimap-prev" title="向左平移一个八度" aria-label="向左平移">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                    <div class="minimap-track" id="minimap-track" title="拖动蓝色视窗或点击任意键位，快速平移大键盘">
+                        <div class="minimap-keyboard" id="minimap-keyboard">
+                            <!-- JS 自动生成 88 键缩略键盘 -->
+                        </div>
+                        <div class="minimap-mask-left" id="minimap-mask-left"></div>
+                        <div class="minimap-viewport" id="minimap-viewport"></div>
+                        <div class="minimap-mask-right" id="minimap-mask-right"></div>
+                    </div>
+                    <button class="minimap-nav-btn" id="minimap-next" title="向右平移一个八度" aria-label="向右平移">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                </div>
+                
+                <!-- 独立钢琴可视视窗：横向滑动只发生在此处，页面其他元素完全固定 -->
+                <div class="piano-viewport" id="piano-viewport">
+                    <div class="piano-keyboard" id="piano-keyboard">
+                        <!-- 钢琴键盘将通过JavaScript生成 -->
+                    </div>
+                </div>
+                
+                <div class="piano-controls">
+                    <button class="btn btn-primary" id="record">开始录音</button>
+                    <button class="btn btn-secondary" id="play-back">播放录音</button>
+                    <button class="btn btn-danger" id="clear">清除录音</button>
+                </div>
+                <p class="piano-tip">
+                    电脑键盘弹奏：底排 Z–M = 低音组 C3–B3，中排 A–K = 中音组 C4–C5，W/E/T/Y/U = 升音黑键；漫游键盘：鼠标拖拽大键盘或直接拖动上方微缩键盘滑块
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部栏 -->
+    <footer class="footer">
+        <div class="container text-center">
+            <p>Copyright © 2026-2046 听音训练 fetraining.com All Rights Reserved</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="static/js/keymapping.js"></script>
+    <script src="static/js/audio.js"></script>
+    <script src="static/js/script.js"></script>
+    <script>
+        // 模拟钢琴页面逻辑
+        document.addEventListener('DOMContentLoaded', function() {
+            initPianoSimulator();
+            enableKeyboardDrag();
+            setupMinimapNavigation();
+        });
+        
+        // ===== 顶部 88 键微型键盘缩略图导航（Minimap）双向联动 =====
+        function setupMinimapNavigation() {
+            const pianoViewport = document.getElementById('piano-viewport');
+            const track = document.getElementById('minimap-track');
+            const miniKeyboard = document.getElementById('minimap-keyboard');
+            const viewport = document.getElementById('minimap-viewport');
+            const maskLeft = document.getElementById('minimap-mask-left');
+            const maskRight = document.getElementById('minimap-mask-right');
+            const prevBtn = document.getElementById('minimap-prev');
+            const nextBtn = document.getElementById('minimap-next');
+            if (!pianoViewport || !track || !miniKeyboard || !viewport) return;
+
+            // 1. 生成 88 键微缩琴键（52 白键 + 36 黑键）
+            miniKeyboard.innerHTML = '';
+            const noteNames = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
+            let curOct = 0, curNoteIdx = 0, keyCount = 0;
+            let whiteIndex = 0;
+            const totalWhiteKeys = 52;
+
+            while (keyCount < 88) {
+                const note = noteNames[curNoteIdx];
+                const isBlack = note.includes('#');
+                const k = document.createElement('div');
+                k.className = `mini-key ${isBlack ? 'black' : 'white'}`;
+
+                if (!isBlack) {
+                    const leftPct = (whiteIndex / totalWhiteKeys) * 100;
+                    const widthPct = (1 / totalWhiteKeys) * 100;
+                    k.style.left = leftPct + '%';
+                    k.style.width = widthPct + '%';
+                    whiteIndex++;
+                } else {
+                    const leftPct = ((whiteIndex - 0.35) / totalWhiteKeys) * 100;
+                    const widthPct = (0.7 / totalWhiteKeys) * 100;
+                    k.style.left = leftPct + '%';
+                    k.style.width = widthPct + '%';
+                }
+                miniKeyboard.appendChild(k);
+                keyCount++;
+                curNoteIdx++;
+                if (curNoteIdx >= noteNames.length) {
+                    curNoteIdx = 0;
+                    curOct++;
+                }
+            }
+
+            // 2. 更新视窗滑块与左右半透明遮罩
+            function updateMinimap() {
+                const scrollWidth = pianoViewport.scrollWidth;
+                const clientWidth = pianoViewport.clientWidth;
+                const maxScroll = scrollWidth - clientWidth;
+                if (maxScroll <= 0) {
+                    viewport.style.left = '0%';
+                    viewport.style.width = '100%';
+                    if (maskLeft) maskLeft.style.width = '0%';
+                    if (maskRight) maskRight.style.width = '0%';
+                    return;
+                }
+
+                // 计算可视宽度占比（限制最小 8%，最大 90%）
+                const viewRatio = Math.max(0.08, Math.min(0.9, clientWidth / scrollWidth));
+                const viewWidthPct = viewRatio * 100;
+                viewport.style.width = viewWidthPct + '%';
+
+                const scrollRatio = Math.max(0, Math.min(1, pianoViewport.scrollLeft / maxScroll));
+                const availablePct = 100 - viewWidthPct;
+                const leftPct = scrollRatio * availablePct;
+
+                viewport.style.left = leftPct + '%';
+                if (maskLeft) maskLeft.style.width = leftPct + '%';
+                if (maskRight) maskRight.style.width = Math.max(0, 100 - leftPct - viewWidthPct) + '%';
+            }
+
+            // 监听琴键视窗滚动（拖拽、触控板横滑、快捷键跟随）
+            pianoViewport.addEventListener('scroll', updateMinimap, { passive: true });
+            window.addEventListener('resize', updateMinimap);
+            window.updateMinimapViewport = updateMinimap;
+
+            // 3. 拖拽蓝色视窗滑块漫游全键盘
+            let isDragging = false;
+            let dragStartX = 0;
+            let dragStartLeftPct = 0;
+
+            viewport.addEventListener('pointerdown', function(e) {
+                e.stopPropagation();
+                isDragging = true;
+                viewport.classList.add('dragging');
+                dragStartX = e.clientX;
+                dragStartLeftPct = parseFloat(viewport.style.left) || 0;
+                viewport.setPointerCapture(e.pointerId);
+            });
+
+            viewport.addEventListener('pointermove', function(e) {
+                if (!isDragging) return;
+                const trackWidth = track.clientWidth;
+                if (trackWidth <= 0) return;
+                const dx = e.clientX - dragStartX;
+                const dxPct = (dx / trackWidth) * 100;
+
+                const viewRatio = Math.max(0.08, Math.min(0.9, pianoViewport.clientWidth / pianoViewport.scrollWidth));
+                const availablePct = 100 - (viewRatio * 100);
+                const newLeftPct = Math.max(0, Math.min(availablePct, dragStartLeftPct + dxPct));
+
+                const scrollRatio = availablePct > 0 ? (newLeftPct / availablePct) : 0;
+                const maxScroll = pianoViewport.scrollWidth - pianoViewport.clientWidth;
+                pianoViewport.scrollLeft = scrollRatio * maxScroll;
+                updateMinimap();
+            });
+
+            function endViewportDrag(e) {
+                if (!isDragging) return;
+                isDragging = false;
+                viewport.classList.remove('dragging');
+                try { viewport.releasePointerCapture(e.pointerId); } catch(err) {}
+            }
+            viewport.addEventListener('pointerup', endViewportDrag);
+            viewport.addEventListener('pointercancel', endViewportDrag);
+
+            // 4. 点击缩略键盘轨道任意位置快速跳转并居中
+            track.addEventListener('click', function(e) {
+                if (e.target === viewport || viewport.contains(e.target)) return;
+                const rect = track.getBoundingClientRect();
+                const clickRatio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                const maxScroll = pianoViewport.scrollWidth - pianoViewport.clientWidth;
+                const targetScroll = (clickRatio * pianoViewport.scrollWidth) - (pianoViewport.clientWidth / 2);
+                pianoViewport.scrollTo({ left: Math.max(0, Math.min(maxScroll, targetScroll)), behavior: 'smooth' });
+            });
+
+            // 5. 左右八度平移按钮
+            const stepDistance = 7 * 70; // 约一个八度
+            if (prevBtn) {
+                prevBtn.addEventListener('click', function() {
+                    pianoViewport.scrollBy({ left: -stepDistance, behavior: 'smooth' });
+                });
+            }
+            if (nextBtn) {
+                nextBtn.addEventListener('click', function() {
+                    pianoViewport.scrollBy({ left: stepDistance, behavior: 'smooth' });
+                });
+            }
+
+            // 默认定位到中央 C4（多阶段校准，确保任何屏幕和字体渲染下 C4 都稳居正中间）
+            window.centerC4 = function(smooth) {
+                if (!pianoViewport) return;
+                const c4 = pianoViewport.querySelector('.key[data-note="C"][data-octave="4"]');
+                if (!c4 || pianoViewport.clientWidth <= 0) return;
+                const target = c4.offsetLeft - (pianoViewport.clientWidth - c4.offsetWidth) / 2;
+                if (smooth) {
+                    pianoViewport.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+                } else {
+                    pianoViewport.scrollLeft = Math.max(0, target);
+                }
+                updateMinimap();
+            };
+
+            // 首次初始化居中校准
+            window.centerC4(false);
+            setTimeout(function() { window.centerC4(false); }, 60);
+            setTimeout(function() { window.centerC4(false); }, 250);
+        }
+        
+        // 键盘快捷键弹奏时，若目标琴键在可视区外则平滑滚过去
+        window.pianoFollowKey = function(keyEl) {
+            const pianoViewport = document.getElementById('piano-viewport');
+            if (!pianoViewport || !keyEl) return;
+            const left = keyEl.offsetLeft;
+            const right = left + keyEl.offsetWidth;
+            if (left < pianoViewport.scrollLeft + 10 || right > pianoViewport.scrollLeft + pianoViewport.clientWidth - 10) {
+                const target = keyEl.offsetLeft - (pianoViewport.clientWidth - keyEl.offsetWidth) / 2;
+                pianoViewport.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+            }
+        };
+        
+        // 按住鼠标左右拖动大键盘（触屏用原生滑动）
+        function enableKeyboardDrag() {
+            const scrollContainer = document.getElementById('piano-viewport');
+            const keyboard = document.getElementById('piano-keyboard');
+            if (!scrollContainer || !keyboard) return;
+            
+            let dragging = false;
+            let moved = false;
+            let startX = 0;
+            let startScroll = 0;
+            
+            keyboard.addEventListener('pointerdown', function(e) {
+                if (e.pointerType === 'touch') return; // 触屏走原生滚动
+                dragging = true;
+                moved = false;
+                startX = e.clientX;
+                startScroll = scrollContainer.scrollLeft;
+            });
+            
+            window.addEventListener('pointermove', function(e) {
+                if (!dragging) return;
+                const dx = e.clientX - startX;
+                if (Math.abs(dx) > 5) {
+                    moved = true;
+                    keyboard.classList.add('dragging');
+                }
+                if (moved) scrollContainer.scrollLeft = startScroll - dx;
+            });
+            
+            window.addEventListener('pointerup', function() {
+                dragging = false;
+                keyboard.classList.remove('dragging');
+            });
+            
+            // 拖动结束后拦截误触发的琴键点击，避免拖动时误发声
+            keyboard.addEventListener('click', function(e) {
+                if (moved) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    moved = false;
+                }
+            }, true);
+        }
+        
+        // 初始化模拟钢琴
+        function initPianoSimulator() {
+            const pianoKeyboard = document.getElementById('piano-keyboard');
+            if (!pianoKeyboard) return;
+            
+            // 生成88键钢琴键盘
+            generateFullPianoKeyboard(pianoKeyboard);
+            
+            // 音源模式切换（原钢琴映射测试页功能，合并至此）
+            const modeSelect = document.getElementById('sim-audio-mode');
+            if (modeSelect) {
+                modeSelect.addEventListener('change', function() {
+                    audioSystem.setAudioMode(this.value === 'samples');
+                });
+            }
+        }
+        
+        // 自然大调简谱唱名映射与八度高低音点符号转换（用于琴键彩色徽章）
+        const JIANPU_DEGREE_MAP = { 'C': '1', 'D': '2', 'E': '3', 'F': '4', 'G': '5', 'A': '6', 'B': '7' };
+        function getJianpuBadgeInfo(note, octave) {
+            if (!JIANPU_DEGREE_MAP[note]) return null;
+            const num = JIANPU_DEGREE_MAP[note];
+            let symbol = num;
+            let badgeClass = 'badge-c4';
+            
+            if (octave === 4) {
+                symbol = num;
+                badgeClass = 'badge-c4';
+            } else if (octave === 5) {
+                symbol = num + '\u0307'; // 组合单高音点 1̇
+                badgeClass = 'badge-c5';
+            } else if (octave === 6) {
+                symbol = num + '\u0308'; // 组合双高音点 1̈
+                badgeClass = 'badge-c6';
+            } else if (octave >= 7) {
+                symbol = num + '\u0307\u0308';
+                badgeClass = 'badge-high';
+            } else if (octave === 3) {
+                symbol = num + '\u0323'; // 组合单低音点 1̣
+                badgeClass = 'badge-c3';
+            } else {
+                symbol = num + '\u0324'; // 组合双低音点 1̤
+                badgeClass = 'badge-low';
+            }
+            return { symbol, badgeClass };
+        }
+
+        // 生成完整的88键钢琴键盘
+        function generateFullPianoKeyboard(container) {
+            container.innerHTML = '';
+            
+            // 钢琴键配置：从A0到C8，共88个键
+            // 音名顺序：A, A#, B, C, C#, D, D#, E, F, F#, G, G#
+            const noteNames = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
+            
+            // 起始八度和键数
+            let currentOctave = 0;
+            let currentNoteIndex = 0; // 从A开始
+            let keyCount = 0;
+            
+            // 生成88个键
+            while (keyCount < 88) {
+                const note = noteNames[currentNoteIndex];
+                const isBlack = note.includes('#');
+                
+                // 创建琴键元素
+                const key = document.createElement('div');
+                key.className = `key ${isBlack ? 'black' : 'white'}`;
+                key.dataset.note = note;
+                key.dataset.octave = currentOctave;
+                
+                // 生成完整的音名（用于显示）
+                const fullNote = note + currentOctave;
+                
+                // 获取等音名
+                const enharmonicName = getEnharmonicName(note, currentOctave);
+                
+                // 添加音名显示
+                const noteNameElement = document.createElement('div');
+                noteNameElement.className = 'note-name';
+                noteNameElement.textContent = fullNote;
+                
+                const enharmonicElement = document.createElement('div');
+                enharmonicElement.className = 'enharmonic-name';
+                enharmonicElement.textContent = enharmonicName;
+                
+                // 白键添加简谱彩色唱名徽章（参考图核心视觉效果）
+                if (!isBlack) {
+                    const badgeInfo = getJianpuBadgeInfo(note, currentOctave);
+                    if (badgeInfo) {
+                        const badge = document.createElement('div');
+                        badge.className = `jianpu-badge ${badgeInfo.badgeClass}`;
+                        badge.textContent = badgeInfo.symbol;
+                        key.appendChild(badge);
+                    }
+                }
+
+                key.appendChild(noteNameElement);
+                key.appendChild(enharmonicElement);
+                
+                // 添加点击事件
+                key.addEventListener('click', function() {
+                    const note = this.dataset.note;
+                    const octave = parseInt(this.dataset.octave);
+                    // 直接使用项目内的音源映射
+                    audioSystem.playNote(note, octave, 1.0);
+                    // 录音中则记录音符与相对时间
+                    if (window.recordNoteIfRecording) recordNoteIfRecording(note, octave);
+                    // 按下高亮
+                    this.classList.add('active');
+                    const el = this;
+                    setTimeout(function() { el.classList.remove('active'); }, 150);
+                    // 五线谱实时对照
+                    if (window.drawStaff) drawStaff(note, octave);
+                });
+                
+                // 添加到容器
+                container.appendChild(key);
+                
+                // 增加键数
+                keyCount++;
+                
+                // 更新音名索引
+                currentNoteIndex++;
+                if (currentNoteIndex >= noteNames.length) {
+                    currentNoteIndex = 0;
+                    currentOctave++;
+                }
+            }
+        }
+        
+        // 获取等音名
+        function getEnharmonicName(note, octave) {
+            // 等音映射
+            const enharmonicMap = {
+                'C#': { name: 'Db', octaveAdjust: 0 },
+                'D#': { name: 'Eb', octaveAdjust: 0 },
+                'F#': { name: 'Gb', octaveAdjust: 0 },
+                'G#': { name: 'Ab', octaveAdjust: 0 },
+                'A#': { name: 'Bb', octaveAdjust: 0 },
+                'B': { name: 'Cb', octaveAdjust: 1 },
+                'C': { name: 'B#', octaveAdjust: -1 }
+            };
+            
+            if (enharmonicMap[note]) {
+                const { name, octaveAdjust } = enharmonicMap[note];
+                return name + (octave + octaveAdjust);
+            }
+            
+            return '';
+        }
+        
+        // ===== 五线谱实时对照系统（大谱表 / 自适应 / 高音谱号 / 低音谱号） =====
+        let lastStaffNote = { note: 'C', octave: 4 };
+        let currentClefMode = 'both'; // 默认大谱表双谱同时显示（钢琴标准）
+
+        // 初始化谱号选择器
+        function initClefModeSelector() {
+            const buttons = document.querySelectorAll('.clef-btn');
+            buttons.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    buttons.forEach(function(b) { b.classList.remove('active'); });
+                    this.classList.add('active');
+                    currentClefMode = this.dataset.mode || 'both';
+                    if (lastStaffNote) {
+                        drawStaff(lastStaffNote.note, lastStaffNote.octave);
+                    }
+                });
+            });
+        }
+
+        // 自然音级绝对阶梯步长（以中央 C4 为 0，严格单调递增，1234567 必定一直往上走）
+        function getAbsoluteDiatonicStep(note, octave) {
+            const letter = note.replace(/[#b]/g, '');
+            const letterSteps = { 'C': 0, 'D': 1, 'E': 2, 'F': 3, 'G': 4, 'A': 5, 'B': 6 };
+            const s = letterSteps[letter] !== undefined ? letterSteps[letter] : 0;
+            return s + (octave - 4) * 7; // C4 = 0, D4 = 1 ... C5 = 7; B3 = -1, C3 = -7 ...
+        }
+
+        function drawStaff(note, octave) {
+            lastStaffNote = { note: note, octave: octave };
+            const svg = document.getElementById('staff-svg');
+            const nameEl = document.getElementById('staff-note-name');
+            const captionEl = document.getElementById('staff-caption');
+            if (!svg || !nameEl) return;
+
+            const absStep = getAbsoluteDiatonicStep(note, octave);
+            const NS = 'http://www.w3.org/2000/svg';
+            function el(tag, attrs) {
+                const node = document.createElementNS(NS, tag);
+                for (const k in attrs) node.setAttribute(k, attrs[k]);
+                svg.appendChild(node);
+                return node;
+            }
+
+            svg.innerHTML = '';
+            const noteX = 240;
+            const ledgerHalf = 26;
+
+            // 决定当前渲染模式
+            let activeMode = currentClefMode;
+            if (activeMode === 'auto') {
+                activeMode = (absStep >= 0) ? 'treble' : 'bass';
+            }
+
+            if (activeMode === 'both') {
+                // ==================== 1. 标准钢琴大谱表（Grand Staff，教材规范） ====================
+                const W = 500, H = 270;
+                svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+
+                // 上半区高音谱表 5 条线（线距 15px）：y = 45(F5), 60(D5), 75(B4), 90(G4), 105(E4)
+                const trebleLines = [45, 60, 75, 90, 105];
+                // 下半区低音谱表 5 条线（线距 15px）：y = 165(A3), 180(F3), 195(D3), 210(B2), 225(G2)
+                const bassLines = [165, 180, 195, 210, 225];
+                // 中间保留宽阔留白（105 到 165 之间整整 60px），中央 C4 恰好坐落在大谱表正中央
+                const c4CenterY = 135;
+                const stepH = 7.5; // 每半线距 (一个自然音级) 7.5px
+
+                // 左侧经典钢琴大谱表花括号（Brace）与连谱贯穿双线
+                el('path', {
+                    d: 'M 32 45 C 21 68 13 112 7 135 C 13 158 21 202 32 225 C 24 200 18 155 14 135 C 18 115 24 70 32 45 Z',
+                    fill: '#5a2340'
+                });
+                el('line', { x1: 34, y1: 45, x2: 34, y2: 225, stroke: '#5a2340', 'stroke-width': 2.2 });
+                el('line', { x1: 38, y1: 45, x2: 38, y2: 225, stroke: '#7a4a5e', 'stroke-width': 1.0 });
+
+                // 绘制高音谱表 5 条线
+                trebleLines.forEach(function(y) {
+                    el('line', { x1: 38, y1: y, x2: W - 25, y2: y, stroke: '#7a4a5e', 'stroke-width': 1.2 });
+                });
+                // 绘制低音谱表 5 条线
+                bassLines.forEach(function(y) {
+                    el('line', { x1: 38, y1: y, x2: W - 25, y2: y, stroke: '#7a4a5e', 'stroke-width': 1.2 });
+                });
+
+                // 左侧高音谱号 𝄞（中心精确环绕第二线 y=90）
+                el('text', { x: 44, y: 104, 'font-size': '62', fill: '#5a2340',
+                             'font-family': 'Georgia, "Times New Roman", serif' }).textContent = '𝄞';
+
+                // 左侧低音谱号 𝄢（第四线 y=180）
+                el('text', { x: 46, y: 176, 'font-size': '44', fill: '#5a2340',
+                             'font-family': 'Georgia, "Times New Roman", serif', 'font-weight': 'bold' }).textContent = '𝄢';
+                // 两个圆点精确夹在第四线 y=180 两侧
+                el('circle', { cx: 76, cy: 172.5, r: 2.6, fill: '#5a2340' });
+                el('circle', { cx: 76, cy: 187.5, r: 2.6, fill: '#5a2340' });
+
+                // 计算音符 Y 坐标
+                let noteY;
+                let stemUp = true;
+
+                if (absStep === 0) {
+                    // 中央 C4：位于大谱表正几何中心 (y=135)
+                    noteY = c4CenterY;
+                    stemUp = true;
+                    // 中央加线
+                    el('line', { x1: noteX - ledgerHalf, y1: c4CenterY, x2: noteX + ledgerHalf, y2: c4CenterY, stroke: '#7a4a5e', 'stroke-width': 1.3 });
+                } else if (absStep > 0) {
+                    // 高音区（归属高音谱表）：以第一线 E4 (y=105, step=2) 为基准逐级向上递减 Y
+                    noteY = 105 - (absStep - 2) * stepH;
+                    stemUp = (absStep < 6); // 第三线 B4(step 6) 以下符干向上，以上符干向下
+
+                    // 高音谱表上加线（absStep >= 12，A5 及以上）
+                    if (absStep >= 12 && (absStep % 2 === 0)) {
+                        for (let s = 12; s <= absStep; s += 2) {
+                            const ly = 105 - (s - 2) * stepH;
+                            el('line', { x1: noteX - ledgerHalf, y1: ly, x2: noteX + ledgerHalf, y2: ly, stroke: '#7a4a5e', 'stroke-width': 1.2 });
+                        }
+                    }
+                } else {
+                    // 低音区（归属低音谱表）：以第五线 A3 (y=165, step=-2) 为基准逐级向下递增 Y
+                    noteY = 165 - (absStep - (-2)) * stepH;
+                    stemUp = (absStep < -6); // 第三线 D3(step -6) 以下符干向上，以上符干向下
+
+                    // 低音谱表下加线（absStep <= -12，E2 及以下）
+                    if (absStep <= -12 && (absStep % 2 === 0)) {
+                        for (let s = -12; s >= absStep; s -= 2) {
+                            const ly = 165 - (s - (-2)) * stepH;
+                            el('line', { x1: noteX - ledgerHalf, y1: ly, x2: noteX + ledgerHalf, y2: ly, stroke: '#7a4a5e', 'stroke-width': 1.2 });
+                        }
+                    }
+                }
+
+                // 临时升降号
+                if (note.includes('#')) {
+                    el('text', { x: noteX - 26, y: noteY + 5, 'font-size': '22', fill: '#b03a6b', 'font-family': 'Georgia, serif' }).textContent = '♯';
+                } else if (note.includes('b')) {
+                    el('text', { x: noteX - 26, y: noteY + 5, 'font-size': '22', fill: '#b03a6b', 'font-family': 'Georgia, serif' }).textContent = '♭';
+                }
+
+                // 符头与符干
+                const rx = 8.5, ry = 6.2;
+                el('ellipse', { cx: noteX, cy: noteY, rx: rx, ry: ry, fill: '#b03a6b',
+                                transform: 'rotate(-18 ' + noteX + ' ' + noteY + ')' });
+
+                const stemX = stemUp ? (noteX + rx - 1.2) : (noteX - rx + 1.2);
+                const stemY2 = stemUp ? (noteY - 36) : (noteY + 36);
+                el('line', { x1: stemX, y1: noteY, x2: stemX, y2: stemY2, stroke: '#5a2340', 'stroke-width': 2.2 });
+
+                if (captionEl) {
+                    if (absStep === 0) {
+                        captionEl.textContent = '中央 C (C4 / c1) · 位于大谱表正中心加线';
+                    } else if (absStep > 0) {
+                        captionEl.textContent = `高音谱表 · 音级阶梯 +${absStep}`;
+                    } else {
+                        captionEl.textContent = `低音谱表 · 音级阶梯 ${absStep}`;
+                    }
+                }
+            } else {
+                // ==================== 2. 单谱表模式（高音谱表 / 低音谱表） ====================
+                const W = 460, H = 200;
+                svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+
+                const staffTop = 60, staffBottom = 140, lineGap = 20, stepH = 10;
+                const lines = [60, 80, 100, 120, 140];
+
+                lines.forEach(function(y) {
+                    el('line', { x1: 50, y1: y, x2: W - 30, y2: y, stroke: '#7a4a5e', 'stroke-width': 1.3 });
+                });
+
+                let noteY;
+                const isTreble = (activeMode === 'treble');
+
+                if (isTreble) {
+                    // 高音谱表（𝄞）：下加一线为中央 C4（step 0），第一线为 E4（step 2）
+                    const c4Y = staffBottom + lineGap; // y = 160
+                    noteY = c4Y - absStep * stepH;
+
+                    // 高音谱号 𝄞
+                    el('text', { x: 30, y: staffBottom - 4, 'font-size': '72', fill: '#5a2340',
+                                 'font-family': 'Georgia, "Times New Roman", serif' }).textContent = '𝄞';
+
+                    // 下加线（step <= 0）
+                    if (absStep <= 0 && (absStep % 2 === 0)) {
+                        for (let s = 0; s >= absStep; s -= 2) {
+                            const ly = c4Y - s * stepH;
+                            el('line', { x1: noteX - ledgerHalf, y1: ly, x2: noteX + ledgerHalf, y2: ly, stroke: '#7a4a5e', 'stroke-width': 1.1 });
+                        }
+                    }
+                    // 上加线（step >= 12，A5 及以上）
+                    if (absStep >= 12 && (absStep % 2 === 0)) {
+                        for (let s = 12; s <= absStep; s += 2) {
+                            const ly = c4Y - s * stepH;
+                            el('line', { x1: noteX - ledgerHalf, y1: ly, x2: noteX + ledgerHalf, y2: ly, stroke: '#7a4a5e', 'stroke-width': 1.1 });
+                        }
+                    }
+                } else {
+                    // 低音谱表（𝄢）：上加一线为中央 C4（step 0），第四线为 F3（step -4，两点夹住）
+                    const c4Y = staffTop - lineGap; // y = 40
+                    noteY = c4Y - absStep * stepH;
+
+                    // 低音谱号 𝄢（第四线 y = 80）
+                    el('text', { x: 30, y: 104, 'font-size': '52', fill: '#5a2340',
+                                 'font-family': 'Georgia, "Times New Roman", serif', 'font-weight': 'bold' }).textContent = '𝄢';
+                    el('circle', { cx: 68, cy: 80 - 10, r: 2.8, fill: '#5a2340' });
+                    el('circle', { cx: 68, cy: 80 + 10, r: 2.8, fill: '#5a2340' });
+
+                    // 上加线（step >= 0）
+                    if (absStep >= 0 && (absStep % 2 === 0)) {
+                        for (let s = 0; s <= absStep; s += 2) {
+                            const ly = c4Y - s * stepH;
+                            el('line', { x1: noteX - ledgerHalf, y1: ly, x2: noteX + ledgerHalf, y2: ly, stroke: '#7a4a5e', 'stroke-width': 1.1 });
+                        }
+                    }
+                    // 下加线（step <= -12，E2 及以下）
+                    if (absStep <= -12 && (absStep % 2 === 0)) {
+                        for (let s = -12; s >= absStep; s -= 2) {
+                            const ly = c4Y - s * stepH;
+                            el('line', { x1: noteX - ledgerHalf, y1: ly, x2: noteX + ledgerHalf, y2: ly, stroke: '#7a4a5e', 'stroke-width': 1.1 });
+                        }
+                    }
+                }
+
+                // 临时升降记号
+                if (note.includes('#')) {
+                    el('text', { x: noteX - 30, y: noteY + 6, 'font-size': '24', fill: '#b03a6b', 'font-family': 'Georgia, serif' }).textContent = '♯';
+                } else if (note.includes('b')) {
+                    el('text', { x: noteX - 30, y: noteY + 6, 'font-size': '24', fill: '#b03a6b', 'font-family': 'Georgia, serif' }).textContent = '♭';
+                }
+
+                // 音符与符干
+                const rx = 10, ry = 7.5;
+                el('ellipse', { cx: noteX, cy: noteY, rx: rx, ry: ry, fill: '#b03a6b',
+                                transform: 'rotate(-18 ' + noteX + ' ' + noteY + ')' });
+
+                const stemUp = isTreble ? (absStep < 6) : (absStep < -6);
+                const stemX = stemUp ? (noteX + rx - 1.5) : (noteX - rx + 1.5);
+                const stemY2 = stemUp ? (noteY - 44) : (noteY + 44);
+                el('line', { x1: stemX, y1: noteY, x2: stemX, y2: stemY2, stroke: '#5a2340', 'stroke-width': 2.4 });
+
+                if (captionEl) {
+                    const clefTitle = isTreble ? '高音谱表 (G谱号)' : '低音谱表 (F谱号)';
+                    captionEl.textContent = `${clefTitle} · 严格逐级攀升 (阶梯 ${absStep > 0 ? '+' : ''}${absStep})`;
+                }
+            }
+
+            // 标题音名与唱名标注
+            const jianpuInfo = getJianpuBadgeInfo(note, octave);
+            const badgeText = jianpuInfo ? ` (唱名 ${jianpuInfo.symbol})` : '';
+            nameEl.textContent = note + octave + badgeText;
+        }
+
+        // 全局挂载与初始化
+        window.drawStaff = drawStaff;
+        document.addEventListener('DOMContentLoaded', function() {
+            initClefModeSelector();
+            drawStaff('C', 4);
+        });
+    </script>
+</body>
+</html>
