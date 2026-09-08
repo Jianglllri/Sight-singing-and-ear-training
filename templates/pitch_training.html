@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音高训练 - 听音训练</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .pitch-page {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 2rem 1rem 4rem;
+        }
+        .pitch-page h2 {
+            margin-bottom: 0.5rem;
+        }
+        .pitch-hint {
+            color: #6c757d;
+            margin-bottom: 1.5rem;
+        }
+        .pitch-panel {
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem 1.5rem;
+            align-items: flex-end;
+            margin-bottom: 1.5rem;
+        }
+        .pitch-panel .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            min-width: 160px;
+            flex: 1;
+        }
+        .pitch-panel label {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .pitch-panel select {
+            padding: 0.5rem 0.7rem;
+            border: 1px solid #a0aec0;
+            border-radius: 4px;
+        }
+        .pitch-score {
+            font-size: 1.05rem;
+            margin-bottom: 1.25rem;
+        }
+        .pitch-stage {
+            background: rgba(255, 255, 255, 0.92);
+            border-radius: 8px;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        }
+        .pitch-status {
+            min-height: 1.6rem;
+            margin-bottom: 1.25rem;
+            font-size: 1.1rem;
+        }
+        .pitch-status.ok { color: #198754; }
+        .pitch-status.bad { color: #dc3545; }
+        .pitch-actions,
+        .pitch-answer-area {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        .pitch-choice-btn {
+            min-width: 160px;
+        }
+        .pitch-fill-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .pitch-fill-row input {
+            width: 140px;
+            text-align: center;
+            padding: 0.5rem;
+            border: 1px solid #a0aec0;
+            border-radius: 4px;
+        }
+        .pitch-reveal {
+            min-height: 1.5rem;
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-top: 0.75rem;
+        }
+        .pitch-interval {
+            color: #6c757d;
+            font-size: 0.95rem;
+            margin-top: 0.35rem;
+        }
+        .pitch-check {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            min-width: 160px;
+            padding-bottom: 0.35rem;
+        }
+        .pitch-check input {
+            width: 1rem;
+            height: 1rem;
+        }
+        .pitch-summary {
+            text-align: left;
+            max-width: 520px;
+            margin: 1.25rem auto 0;
+        }
+        .pitch-summary li {
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+        .pitch-summary .ok { color: #198754; }
+        .pitch-summary .bad { color: #dc3545; }
+        .pitch-review-btn {
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-custom">
+        <div class="container navbar-container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">听音训练</a>
+            <div class="navbar-nav mx-auto">
+                <a class="nav-link" href="{{ url_for('c_major_scale') }}">自然大调音阶训练</a>
+                <a class="nav-link" href="{{ url_for('natural_scale_training') }}">自然音阶训练</a>
+                <a class="nav-link" href="{{ url_for('free_training') }}">自由训练</a>
+                <a class="nav-link active" href="{{ url_for('pitch_training') }}">音高训练</a>
+            </div>
+            <div class="photo-credit navbar-photo-credit">@Photo by weston m on Unsplash</div>
+        </div>
+    </nav>
+
+    <main>
+        <section class="pitch-page">
+            <h2 class="text-center">音高训练</h2>
+            <p class="text-center pitch-hint" id="pitch-hint">先后播放两个音。简单档音程远，困难档音程近。</p>
+
+            <div class="pitch-panel">
+                <div class="control-group">
+                    <label for="pitch-session">训练形式</label>
+                    <select id="pitch-session">
+                        <option value="practice">练习</option>
+                        <option value="exam">考试（10题）</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="pitch-mode">题型</label>
+                    <select id="pitch-mode">
+                        <option value="compare">比音高</option>
+                        <option value="choice">听音名（选择题）</option>
+                        <option value="fill">听音名（填空题）</option>
+                        <option value="octave">八度练习</option>
+                        <option value="step">全音 / 半音</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="pitch-difficulty">难度</label>
+                    <select id="pitch-difficulty">
+                        <option value="easy">简单（远音程）</option>
+                        <option value="medium">中等</option>
+                        <option value="hard">困难（近音程）</option>
+                    </select>
+                </div>
+                <label class="pitch-check" id="pitch-replay-wrap">
+                    <input type="checkbox" id="pitch-allow-replay" checked>
+                    考试允许重听
+                </label>
+                <button class="btn btn-primary" id="pitch-new">开始练习</button>
+                <button class="btn btn-secondary" id="pitch-replay">重听</button>
+            </div>
+
+            <p class="text-center pitch-score">
+                正确 <span id="pitch-correct">0</span> / <span id="pitch-total">0</span>
+                ，正确率 <span id="pitch-rate">-</span>
+                <span id="pitch-progress"></span>
+            </p>
+
+            <div class="pitch-stage">
+                <p class="pitch-status" id="pitch-status">选择设置后开始</p>
+                <div class="pitch-answer-area" id="pitch-answer-area"></div>
+                <div class="pitch-reveal" id="pitch-reveal"></div>
+                <div class="pitch-interval" id="pitch-interval"></div>
+                <ol class="pitch-summary" id="pitch-summary"></ol>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container text-center">
+            <p>Copyright © 2026-2046 听音训练 fetraining.com All Rights Reserved</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/keymapping.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/pitch_training.js') }}"></script>
+</body>
+</html>

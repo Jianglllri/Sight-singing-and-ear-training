@@ -1,0 +1,128 @@
+# 钢琴音频映射关系备份
+
+## 正确的音频文件映射关系
+
+### 低音区 (C2 - B2)
+- C2: C.mp3
+- C#2: Cs.mp3
+- Db2: Cs.mp3
+- D2: D.mp3
+- D#2: Ds.mp3
+- Eb2: Ds.mp3
+- E2: E.mp3
+- F2: F.mp3
+- F#2: Fs.mp3
+- Gb2: Fs.mp3
+- G2: G.mp3
+- G#2: Gs.mp3
+- Ab2: Gs.mp3
+- A2: A.mp3
+- A#2: As.mp3
+- Bb2: As.mp3
+- B2: B.mp3
+
+### 中音区 (C3 - B3)
+- C3: cc.mp3
+- C#3: ccs.mp3
+- Db3: ccs.mp3
+- D3: dd.mp3
+- D#3: dds.mp3
+- Eb3: dds.mp3
+- E3: ee.mp3
+- F3: ff.mp3
+- F#3: ffs.mp3
+- Gb3: ffs.mp3
+- G3: gg.mp3
+- G#3: ggs.mp3
+- Ab3: ggs.mp3
+- A3: aa.mp3
+- A#3: aas.mp3
+- Bb3: aas.mp3
+- B3: bb.mp3
+
+### 高音区 (C4 - B4)
+- C4: c1.mp3
+- C#4: c1s.mp3
+- Db4: c1s.mp3
+- D4: d1.mp3
+- D#4: d1s.mp3
+- Eb4: d1s.mp3
+- E4: e1.mp3
+- F4: f1.mp3
+- F#4: f1s.mp3
+- Gb4: f1s.mp3
+- G4: g1.mp3
+- G#4: g1s.mp3
+- Ab4: g1s.mp3
+- A4: a1.mp3
+- A#4: a1s.mp3
+- Bb4: a1s.mp3
+- B4: b1.mp3
+
+### 超高音区 (C5 - B5)
+- C5: c2.mp3
+- C#5: c2s.mp3
+- Db5: c2s.mp3
+- D5: d2.mp3
+- D#5: d2s.mp3
+- Eb5: d2s.mp3
+- E5: e2.mp3
+- F5: f2.mp3
+- F#5: f2s.mp3
+- Gb5: f2s.mp3
+- G5: g2.mp3
+- G#5: g2s.mp3
+- Ab5: g2s.mp3
+- A5: a2.mp3
+- A#5: a2s.mp3
+- Bb5: a2s.mp3
+- B5: b2.mp3
+
+### 超高音区 (C6 - B6)
+- C6: c3.mp3
+- C#6: c3s.mp3
+- Db6: c3s.mp3
+- D6: d3.mp3
+- D#6: d3s.mp3
+- Eb6: d3s.mp3
+- E6: e3.mp3
+- F6: f3.mp3
+- F#6: f3s.mp3
+- Gb6: f3s.mp3
+- G6: g3.mp3
+- G#6: g3s.mp3
+- Ab6: g3s.mp3
+- A6: a3.mp3
+- A#6: a3s.mp3
+- Bb6: a3s.mp3
+- B6: b3.mp3
+
+### 超高音区 (C7 - B7)
+- C7: c4.mp3
+- C#7: c4s.mp3
+- Db7: c4s.mp3
+- D7: d4.mp3
+- D#7: d4s.mp3
+- Eb7: d4s.mp3
+- E7: e4.mp3
+- F7: f4.mp3
+- F#7: f4s.mp3
+- Gb7: f4s.mp3
+- G7: g4.mp3
+- G#7: g4s.mp3
+- Ab7: g4s.mp3
+- A7: a4.mp3
+- A#7: a4s.mp3
+- Bb7: a4s.mp3
+- B7: b4.mp3
+
+### 最高音
+- C8: c5.mp3
+
+## 备注
+- 此映射关系基于项目中的实际音频文件
+- 所有音组的映射均已验证正确
+- C3及以上音组的映射特别重要，已确认正确无误
+- 此备份文件用于防止未来映射关系被意外修改
+
+备份日期: 2026-01-27

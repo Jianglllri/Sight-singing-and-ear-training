@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>钢琴键映射测试 - 听音训练</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* 钢琴测试页面样式 */
+        body {
+            background-color: #f5f7fa;
+            font-family: 'Georgia', 'Times New Roman', serif;
+        }
+        
+        .piano-test-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .piano-keyboard {
+            display: flex;
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            padding: 30px 20px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            margin: 40px 0;
+            overflow-x: auto;
+            border: 3px solid #343a40;
+        }
+        
+        .key {
+            height: 250px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.1s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            font-weight: bold;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 10px;
+            font-size: 0.8rem;
+        }
+        
+        .key.white {
+            width: 60px;
+            background: linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%);
+            z-index: 1;
+            color: #343a40;
+            border: 1px solid #dee2e6;
+        }
+        
+        .key.black {
+            width: 40px;
+            height: 150px;
+            background: linear-gradient(180deg, #000000 0%, #333333 100%);
+            margin: 0 -20px;
+            z-index: 2;
+            color: white;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        
+        .key:hover, .key.active {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        
+        .key.white:hover, .key.white.active {
+            background: linear-gradient(180deg, #e3f2fd 0%, #bbdefb 100%);
+        }
+        
+        .key.black:hover, .key.black.active {
+            background: linear-gradient(180deg, #333333 0%, #555555 100%);
+        }
+        
+        .key-label {
+            position: absolute;
+            bottom: 10px;
+            text-align: center;
+            width: 100%;
+        }
+        
+        .note-name {
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        
+        .octave-number {
+            font-size: 0.7rem;
+            opacity: 0.7;
+        }
+        
+        .control-panel {
+            background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+            padding: 1.5rem 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            border: 1px solid #cbd5e0;
+        }
+        
+        .control-group {
+            margin-bottom: 1rem;
+        }
+        
+        .control-group label {
+            font-weight: bold;
+            color: #2d3748;
+            margin-right: 1rem;
+        }
+        
+        .control-group select {
+            padding: 0.5rem;
+            border: 1px solid #a0aec0;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-custom">
+        <div class="container navbar-container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">听音训练</a>
+            <div class="navbar-nav mx-auto">
+                <a class="nav-link" href="{{ url_for('index') }}">首页</a>
+                <a class="nav-link active" href="{{ url_for('piano_test') }}">钢琴测试</a>
+                <a class="nav-link" href="{{ url_for('c_major_scale') }}">自然大调音阶训练</a>
+                <a class="nav-link" href="{{ url_for('natural_scale_training') }}">自然音阶训练</a>
+                <a class="nav-link" href="{{ url_for('free_training') }}">自由训练</a>
+            </div>
+            <!-- 导航栏照片来源 -->
+            <div class="photo-credit navbar-photo-credit">@Photo by weston m on Unsplash</div>
+        </div>
+    </nav>
+
+    <!-- 页面内容 -->
+    <main>
+        <section class="piano-test-container">
+            <h2 class="text-center mb-4">钢琴键映射测试</h2>
+            <p class="text-center mb-6">点击下方钢琴键测试声音，确认所有88个键的音源是否被正确调用</p>
+            
+            <!-- 控制面板 -->
+            <div class="control-panel">
+                <div class="control-group">
+                    <label for="audio-mode">音频模式：</label>
+                    <select id="audio-mode">
+                        <option value="samples">使用采样</option>
+                        <option value="synthetic">合成声音</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>说明：</label>
+                    <span>钢琴键从A0到C8，共88个键。点击键测试声音，查看控制台输出确认音源加载情况。</span>
+                </div>
+            </div>
+            
+            <!-- 钢琴键盘 -->
+            <div class="piano-keyboard" id="piano-keyboard">
+                <!-- 钢琴键盘将通过JavaScript生成 -->
+            </div>
+        </section>
+    </main>
+
+    <!-- 底部栏 -->
+    <footer class="footer">
+        <div class="container text-center">
+            <p>Copyright © 2026-2046 听音训练 fetraining.com All Rights Reserved</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/keymapping.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
+    <script>
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            generateFullPianoKeyboard();
+            setupAudioModeToggle();
+        });
+        
+        // 生成完整的钢琴键盘（88个键，从A0到C8）
+        function generateFullPianoKeyboard() {
+            const container = document.getElementById('piano-keyboard');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            // 钢琴键配置（从A0到C8）
+            // 格式：[音符名称, 八度, 是否白键]
+            const pianoKeys = generateAllPianoKeys();
+            
+            // 生成钢琴键
+            for (let i = 0; i < pianoKeys.length; i++) {
+                const [note, octave, isWhite] = pianoKeys[i];
+                
+                const key = document.createElement('div');
+                key.className = `key ${isWhite ? 'white' : 'black'}`;
+                
+                // 添加键标签
+                const keyLabel = document.createElement('div');
+                keyLabel.className = 'key-label';
+                keyLabel.innerHTML = `<div class="note-name">${note}</div><div class="octave-number">${octave}</div>`;
+                key.appendChild(keyLabel);
+                
+                // 添加数据属性
+                key.dataset.note = note;
+                key.dataset.octave = octave;
+                key.dataset.fullNote = note + octave;
+                
+                // 添加点击事件
+                key.addEventListener('click', function() {
+                    const note = this.dataset.note;
+                    const octave = parseInt(this.dataset.octave);
+                    
+                    console.log('Playing note:', note, octave);
+                    
+                    // 播放音符
+                    audioSystem.playNote(note, octave, 1.0);
+                    
+                    // 添加按下效果
+                    this.classList.add('active');
+                    setTimeout(() => {
+                        this.classList.remove('active');
+                    }, 100);
+                });
+                
+                container.appendChild(key);
+            }
+        }
+        
+        // 生成所有88个钢琴键的配置
+        function generateAllPianoKeys() {
+            const keys = [];
+            const octaves = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+            const whiteKeys = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+            const blackKeys = ['C#', 'D#', '', 'F#', 'G#', 'A#', ''];
+            
+            for (const octave of octaves) {
+                for (let i = 0; i < 7; i++) {
+                    // 跳过超出范围的键
+                    if ((octave === 0 && i < 5) || (octave === 8 && i > 0)) {
+                        continue;
+                    }
+                    
+                    // 添加白键
+                    keys.push([whiteKeys[i], octave, true]);
+                    
+                    // 添加黑键（如果有的话）
+                    if (blackKeys[i]) {
+                        keys.push([blackKeys[i], octave, false]);
+                    }
+                }
+            }
+            
+            return keys;
+        }
+        
+        // 设置音频模式切换
+        function setupAudioModeToggle() {
+            const audioModeSelect = document.getElementById('audio-mode');
+            if (!audioModeSelect) return;
+            
+            audioModeSelect.addEventListener('change', function() {
+                const useSamples = this.value === 'samples';
+                audioSystem.setAudioMode(useSamples);
+                console.log('Audio mode changed to:', useSamples ? 'samples' : 'synthetic');
+            });
+        }
+    </script>
+</body>
+</html>

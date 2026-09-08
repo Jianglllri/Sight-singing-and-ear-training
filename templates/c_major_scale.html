@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C大调自然音阶练习 - 听音训练</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* C大调自然音阶练习页面样式 - 学院风 */
+        body {
+            /* 添加页面背景图片 */
+            background-image: url('{{ url_for('static', filename='images/Cmajor_bg.jpg') }}');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+        
+        .c-major-scale-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            font-family: 'Georgia', 'Times New Roman', serif;
+        }
+        
+        /* 标题样式 */
+        .c-major-scale-container h2 {
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        /* 控制面板样式 */
+        .control-panel {
+            /* 添加背景图片 */
+            background-image: url('{{ url_for('static', filename='images/bar_bg.jpg') }}');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            padding: 1.5rem 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            /* 使用flex布局确保所有控制项在同一行 */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1.5rem;
+            border: 2px solid black;
+        }
+        
+        /* 控制面板文字颜色 */
+        .control-panel label {
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .control-panel select,
+        .control-panel input {
+            background: rgba(255, 255, 255, 0.9);
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        .control-group label {
+            font-weight: bold;
+            color: #2d3748;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .control-group select,
+        .control-group input {
+            padding: 0.6rem 0.8rem;
+            border: 1px solid #a0aec0;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            background: white;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+        
+        .control-group select:focus,
+        .control-group input:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 2px rgba(66,153,225,0.2);
+        }
+        
+        /* 节奏型显示 */
+        .rhythm-display {
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #2d3748;
+            padding: 0;
+            border: none;
+            border-radius: 0;
+            background: transparent;
+            font-family: 'Courier New', monospace;
+            min-width: 80px;
+        }
+        
+        /* 钢琴键盘样式 */
+        .piano-container {
+            /* 使用背景图片，用户可将图片命名为piano_bg.jpg放入static/images文件夹 */
+            background-image: url('{{ url_for('static', filename='images/piano_bg.jpg') }}');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            margin-bottom: 2rem;
+            overflow-x: auto;
+            /* 移除边框，增加透明度效果 */
+            border: none;
+            /* 确保容器本身透明，不影响背景图片 */
+            background-color: transparent;
+            /* 相对定位，为照片署名提供定位基准 */
+            position: relative;
+        }
+        
+        /* 钢琴背景图片署名样式 */
+        .piano-photo-credit {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            /* 移除背景色块 */
+            background: transparent;
+            /* 字体改成白色 */
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-style: italic;
+            z-index: 10;
+            /* 移除背景模糊效果 */
+            backdrop-filter: none;
+        }
+        
+        /* 音频采样版权信息 */
+        .audio-samples-credit {
+            text-align: center;
+            color: white;
+            font-size: 0.8rem;
+            font-style: italic;
+            margin-top: 1rem;
+            padding: 0;
+            background: transparent;
+            box-shadow: none;
+        }
+        
+        /* 页面背景图片署名样式 */
+        .page-photo-credit {
+            position: absolute;
+            top: 8rem;
+            right: 1rem;
+            /* 移除背景色块 */
+            background: transparent;
+            /* 字体改成黑色 */
+            color: black;
+            padding: 0.3rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-style: italic;
+            z-index: 100;
+        }
+        
+        /* 为body添加变暗遮罩，使背景图片不那么亮 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        /* 调整钢琴键盘样式，使其更好地融入背景 */
+        .key {
+            border: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        .key.white {
+            background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(247,250,252,0.8) 100%);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+        }
+        
+        .key.black {
+            background: linear-gradient(180deg, rgba(45,55,72,0.95) 0%, rgba(26,32,44,0.9) 100%);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        
+        .piano-keyboard {
+            display: flex;
+            justify-content: center;
+            position: relative;
+            /* 移除深色背景，使钢琴键盘透明，显示容器背景图片 */
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
+            box-shadow: none;
+            margin: 0;
+            border: none;
+        }
+        
+        /* 钢琴设置选项区域 */
+        .piano-options {
+            position: absolute;
+            top: 3rem;
+            right: 10rem;
+            /* 移除背景和边框 */
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
+            box-shadow: none;
+            border: none;
+            z-index: 10;
+            /* 左对齐文字 */
+            text-align: left;
+        }
+        
+        /* 复选框样式 */
+        .piano-options .form-check {
+            margin: 0;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            /* 重置所有默认边距 */
+            padding: 0;
+            /* 确保容器高度一致 */
+            height: 18px;
+        }
+        
+        .piano-options .form-check-label {
+            font-weight: normal;
+            color: white;
+            font-size: 0.8rem;
+            margin-left: 0.8rem;
+            margin-right: 0;
+            margin-top: 0;
+            margin-bottom: 0;
+            /* 确保文字清晰显示 */
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            /* 确保文字垂直居中 */
+            line-height: 18px;
+            height: 18px;
+            /* 与上方署名字体保持一致 */
+            font-style: italic;
+        }
+        
+        /* 调整容器高度 */
+        .piano-options .form-check {
+            height: 18px;
+        }
+        
+        .piano-options .form-check-input {
+            /* 移除transform缩放，使用原始大小确保对齐 */
+            transform: none;
+            /* 确保复选框清晰可见 */
+            accent-color: white;
+            /* 重置默认边距 */
+            margin: 0;
+            /* 调整垂直对齐 */
+            vertical-align: middle;
+            /* 确保复选框高度一致 */
+            height: 16px;
+            width: 16px;
+        }
+        
+        /* 琴键样式 */
+        .key {
+            height: 280px;
+            border: none;
+            cursor: pointer;
+            position: relative;
+            z-index: 1;
+            transition: all 0.1s ease;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+        
+        .key.white {
+            width: 75px;
+            background: linear-gradient(180deg, #ffffff 0%, #f7fafc 100%);
+            z-index: 1;
+            color: #2d3748;
+            border: 1px solid #e2e8f0;
+            border-radius: 0 0 4px 4px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+        }
+        
+        .key.black {
+            width: 48px;
+            height: 170px;
+            background: #000000;
+            margin: 0 -24px;
+            z-index: 2;
+            color: white;
+            border-radius: 0 0 4px 4px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        /* 琴键高亮效果 */
+        .key.highlight {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(66,153,225,0.4);
+        }
+        
+        .key.white.highlight {
+            background: linear-gradient(180deg, #ebf8ff 0%, #bee3f8 100%);
+        }
+        
+        .key.black.highlight {
+            background: linear-gradient(180deg, #4299e1 0%, #3182ce 100%);
+        }
+        
+        /* 结果高亮 - 绿色 */
+        .key.result-highlight {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(48,105,89,0.4);
+        }
+        
+        .key.white.result-highlight {
+            background: linear-gradient(180deg, #f0fff4 0%, #c6f6d5 100%);
+        }
+        
+        .key.black.result-highlight {
+            background: linear-gradient(180deg, #38a169 0%, #2f855a 100%);
+        }
+        
+        /* 结果显示区域 */
+        .result-area {
+            /* 添加背景图片 */
+            background-image: url('{{ url_for('static', filename='images/bar_bg.jpg') }}');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+            /* 固定高度和宽度，确保完全稳定 */
+            height: 80px;
+            width: 400px;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            border: 2px solid black;
+            margin-right: 0;
+            flex-shrink: 0;
+        }
+        
+        .result-text {
+            font-size: 1rem;
+            font-weight: bold;
+            color: black;
+            margin-bottom: 0;
+            font-style: italic;
+        }
+        
+        .result-note {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #e53e3e;
+            font-family: 'Courier New', monospace;
+        }
+        
+        /* 控制和结果区域容器 */
+        .control-result-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 2rem;
+            height: 80px;
+            gap: 6rem;
+        }
+        
+        /* 控制按钮 */
+        .control-buttons {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: flex-start;
+            margin-left: 0;
+        }
+        
+        /* 复古CD风格按钮 */
+        .retro-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid #333;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: pointer;
+        }
+        
+        /* 开始按钮 - 播放图标 */
+        .play-btn {
+            background: #38a169;
+            color: white;
+        }
+        
+        /* 停止按钮 - 停止图标 */
+        .stop-btn {
+            background: #e53e3e;
+            color: white;
+        }
+        
+        /* 播放图标 */
+        .play-btn::before {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-top: 9px solid transparent;
+            border-bottom: 9px solid transparent;
+            border-left: 15px solid white;
+            left: 38%;
+        }
+        
+        /* 停止图标 */
+        .stop-btn::before {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: white;
+        }
+        
+        /* 暂停按钮 */
+        .pause-btn {
+            background: #ed8936;
+            color: white;
+        }
+        
+        /* 暂停图标 */
+        .pause-btn::before {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-left: 4px solid white;
+            border-right: 4px solid white;
+        }
+        
+        /* 按钮悬停效果 */
+        .retro-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+        }
+        
+        /* 按钮按下效果 */
+        .retro-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 1200px) {
+            .control-panel {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .control-group {
+                min-width: 150px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .control-panel {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .control-group {
+                width: 100%;
+            }
+            
+            .key {
+                height: 220px;
+            }
+            
+            .key.white {
+                width: 60px;
+            }
+            
+            .key.black {
+                width: 36px;
+                height: 130px;
+                margin: 0 -18px;
+            }
+        }
+        
+        /* 自然大调音阶选项 */
+        .major-scale-options {
+            position: absolute;
+            top: 50%;
+            left: 11rem;
+            transform: translateY(-50%);
+            width: 100px;
+            z-index: 10;
+        }
+        
+        .major-scale-title {
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            font-size: 0.9rem;
+            font-weight: normal;
+            margin-bottom: 1rem;
+            text-align: left;
+            margin-left: 0rem;
+            font-style: italic;
+        }
+        
+        .major-scale-columns {
+            display: flex;
+            gap: 0;
+        }
+        
+        .major-scale-column {
+            flex: 1;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .major-scale-column .form-check {
+            margin-bottom: 0.5rem;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            height: 18px;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .major-scale-column .form-check-label {
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+            margin-right: 0;
+            margin-top: 0;
+            margin-bottom: 0;
+            line-height: 18px;
+            height: 18px;
+            font-style: italic;
+        }
+        
+        .major-scale-column .form-check-input {
+            transform: none;
+            accent-color: white;
+            margin: 0;
+            vertical-align: middle;
+            height: 16px;
+            width: 16px;
+        }
+        
+        /* 钢琴设置选项 */
+        .piano-options {
+            position: absolute;
+            top: 3rem;
+            right: 10rem;
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
+            box-shadow: none;
+            border: none;
+            z-index: 10;
+            text-align: left;
+        }
+        
+        /* 钢琴设置选项文字颜色 */
+        .piano-options label {
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .piano-options .form-check-label {
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        /* 钢琴键盘容器 */
+        .piano-container {
+            /* 使用背景图片，用户可将图片命名为piano_bg.jpg放入static/images文件夹 */
+            background-image: url('{{ url_for('static', filename='images/piano_bg.jpg') }}');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            margin-bottom: 2rem;
+            overflow-x: auto;
+            /* 移除边框，增加透明度效果 */
+            border: none;
+            /* 确保容器本身透明，不影响背景图片 */
+            background-color: transparent;
+            /* 相对定位，为照片署名提供定位基准 */
+            position: relative;
+        }
+        
+        /* 钢琴键盘 */
+        .piano-keyboard {
+            display: flex;
+            justify-content: center;
+            position: relative;
+            /* 移除深色背景，使钢琴键盘透明，显示容器背景图片 */
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
+            box-shadow: none;
+            margin: 0;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-custom">
+        <div class="container navbar-container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">听音训练</a>
+            <div class="navbar-nav mx-auto">
+                <a class="nav-link active" href="{{ url_for('c_major_scale') }}">自然大调音阶训练</a>
+                <a class="nav-link" href="{{ url_for('natural_scale_training') }}">自然音阶训练</a>
+                <a class="nav-link" href="{{ url_for('free_training') }}">自由训练</a>
+                <a class="nav-link" href="{{ url_for('pitch_training') }}">音高训练</a>
+            </div>
+            <!-- 导航栏照片来源 -->
+            <div class="photo-credit navbar-photo-credit">@Photo by weston m on Unsplash</div>
+        </div>
+    </nav>
+
+    <!-- 页面内容 -->
+    <main>
+        <section class="c-major-scale-container">
+            <h2 class="text-center mb-4">自然大调音阶训练</h2>
+            
+            <!-- 第一层：控制面板 -->
+            <div class="control-panel">
+                <div class="control-group">
+                    <label for="mode">模式选择</label>
+                    <select id="mode">
+                        <option value="training">训练</option>
+                        <option value="exam">考试</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="difficulty">难度选择</label>
+                    <select id="difficulty">
+                        <option value="easy">简单</option>
+                        <option value="intermediate">进阶</option>
+                        <option value="hard">困难</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="speed">速度选择 (BPM): <span id="speed-value">120</span></label>
+                    <input type="range" id="speed" min="40" max="150" value="120" step="1">
+                </div>
+                
+                <div class="control-group">
+                    <label for="pause">每组结束停顿间隔 (秒): <span id="pause-value">3</span></label>
+                    <input type="range" id="pause" min="1" max="5" value="3" step="0.5">
+                </div>
+                
+                <div class="control-group rhythm-group">
+                    <label>节奏型</label>
+                    <div class="rhythm-display">4/4</div>
+                </div>
+            </div>
+            
+            <!-- 控制和结果区域 -->
+            <div class="control-result-container">
+                <!-- 控制按钮 -->
+                <div class="control-buttons">
+                    <button class="retro-btn play-btn" id="start-btn" title="开始"></button>
+                    <button class="retro-btn pause-btn" id="pause-btn" disabled title="暂停"></button>
+                    <button class="retro-btn stop-btn" id="stop-btn" disabled title="停止"></button>
+                </div>
+                
+                <!-- 结果显示区域 -->
+                <div class="result-area" id="result-area">
+                    <div class="result-text">自然音阶练习：听到随机音后2秒后播放结果</div>
+                    <div class="result-note" id="result-note"></div>
+                </div>
+            </div>
+            
+            <!-- 第二层：钢琴键盘 -->
+            <div class="piano-container">
+                <!-- 钢琴背景图片署名 -->
+                <div class="piano-photo-credit">@Photo by Keith Misner on Unsplash</div>
+                
+                <!-- 自然大调音阶选项 -->
+                <div class="major-scale-options" style="width: 150px;">
+                    <div class="form-check mb-3" style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; height: 18px; padding: 0; margin: 0;">
+                        <input class="form-check-input" type="checkbox" id="hide-note-names" style="transform: none; accent-color: white; margin: 0; vertical-align: middle; height: 16px; width: 16px;">
+                        <label class="form-check-label" for="hide-note-names" style="color: white; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3); font-size: 0.9rem; font-style: italic; margin-left: 0.8rem; margin-right: 0; margin-top: 0; margin-bottom: 0; line-height: 18px; height: 18px; white-space: nowrap;">
+                            不显示音名
+                        </label>
+                    </div>
+                    <h4 class="major-scale-title">自然大调</h4>
+                    <div class="major-scale-columns">
+                        <div class="major-scale-column">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="major-scale" id="scale-c" value="C" checked>
+                                <label class="form-check-label" for="scale-c">C</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="major-scale" id="scale-g" value="G">
+                                <label class="form-check-label" for="scale-g">G</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="major-scale" id="scale-d" value="D">
+                                <label class="form-check-label" for="scale-d">D</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="major-scale" id="scale-a" value="A">
+                                <label class="form-check-label" for="scale-a">A</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="major-scale" id="scale-e" value="E">
+                                <label class="form-check-label" for="scale-e">E</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="major-scale" id="scale-b" value="B">
+                                <label class="form-check-label" for="scale-b">B</label>
+                            </div>
+                        </div>
+                        <div class="major-scale-column">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="major-scale" id="scale-fs" value="F#">
+                                <label class="form-check-label" for="scale-fs">F#</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="major-scale" id="scale-f" value="F">
+                                <label class="form-check-label" for="scale-f">F</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="major-scale" id="scale-bb" value="Bb">
+                                <label class="form-check-label" for="scale-bb">Bb</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="major-scale" id="scale-eb" value="Eb">
+                                <label class="form-check-label" for="scale-eb">Eb</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="major-scale" id="scale-ab" value="Ab">
+                                <label class="form-check-label" for="scale-ab">Ab</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="major-scale" id="scale-db" value="Db">
+                                <label class="form-check-label" for="scale-db">Db</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 钢琴设置选项 -->
+                <div class="piano-options">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="include-black-keys">
+                        <label class="form-check-label" for="include-black-keys">
+                            包含所有键
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="skip-scale">
+                        <label class="form-check-label" for="skip-scale">
+                            不播放音阶
+                        </label>
+                    </div>
+                    <div class="mt-2">
+                        <label class="form-check-label">音组选择</label>
+                        <div class="mt-1">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="octave-group" id="octave-c2" value="2">
+                                <label class="form-check-label" for="octave-c2">C2</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="octave-group" id="octave-c3" value="3">
+                                <label class="form-check-label" for="octave-c3">C3</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="octave-group" id="octave-c4" value="4" checked>
+                                <label class="form-check-label" for="octave-c4">C4</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="octave-group" id="octave-c5" value="5">
+                                <label class="form-check-label" for="octave-c5">C5</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="octave-group" id="octave-c6" value="6">
+                                <label class="form-check-label" for="octave-c6">C6</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="octave-group" id="octave-c7" value="7">
+                                <label class="form-check-label" for="octave-c7">C7</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="piano-keyboard" id="piano-keyboard">
+                    <!-- 钢琴键盘将通过JavaScript生成 -->
+                </div>
+                
+                <!-- 音频采样版权信息 -->
+                <div class="audio-samples-credit">
+                    Thanks for Audio Samples: Copyright (c) 2020 Liam Lee/https://github.com/Leethring/piano-sound-samples.git
+                </div>
+                
+                <!-- 伯克利半音阶唱名对照表 -->
+                <div class="solfege-reference" style="text-align: center; color: white; font-size: 0.85rem; margin-top: 0.5rem; font-style: italic; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">
+                    唱名对照：1-do | #1-di | 2-re | #2-ri | 3-mi | 4-fa | #4-fi | 5-sol | #5-si | 6-la | #6-li | 7-ti
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 底部栏 -->
+    <footer class="footer">
+        <div class="container text-center">
+            <p>Copyright © 2026-2046 听音训练 fetraining.com All Rights Reserved</p>
+        </div>
+    </footer>
+
+    <!-- 页面背景图片署名 -->
+    <div class="page-photo-credit">@Photo by Ian Dooley on Unsplash</div>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/keymapping.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        // C大调自然音阶练习页面逻辑
+        document.addEventListener('DOMContentLoaded', function() {
+            initCMajorScalePractice();
+        });
+    </script>
+</body>
+</html>
