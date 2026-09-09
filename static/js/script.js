@@ -1171,7 +1171,7 @@ function initCMajorScalePractice() {
         '7':  'B-7-ti.wav'
     };
 
-    // 根据当前调式，计算任意音符的唱名标签（如 "1", "#1", "2", "#4" 等）
+    // 根据当前调式，计算任意音符的唱名标签（音阶内显示纯数字，黑键显示标准变音升降记号如 #1/b2, #2/b3）
     function getSolfegeLabel(note, keyScale) {
         const scale = getScaleNotesForKey(keyScale);
         
@@ -1182,8 +1182,21 @@ function initCMajorScalePractice() {
             }
         }
         
-        // 非音阶内音符：找到下方最近的音阶音，返回 #N
-        const chromaticBase = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        // C 大调下的黑键：同时完整展现教材标准的升记号与降记号（#1/b2, #2/b3, #4/b5, #5/b6, #6/b7）
+        const cMajorAccidentals = {
+            'C#': '#1/b2', 'Db': '#1/b2',
+            'D#': '#2/b3', 'Eb': '#2/b3',
+            'F#': '#4/b5', 'Gb': '#4/b5',
+            'G#': '#5/b6', 'Ab': '#5/b6',
+            'A#': '#6/b7', 'Bb': '#6/b7'
+        };
+        if (keyScale === 'C' && cMajorAccidentals[note]) {
+            return cMajorAccidentals[note];
+        }
+
+        // 其他调式下的黑键：如果是降号调式（含有 b 或 F），优先使用降记号，否则使用升记号
+        const isFlatScale = keyScale.includes('b') || keyScale === 'F';
+        
         const chromaticIdx = {
             'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,
             'E':4,'Fb':4,'E#':5,'F':5,'F#':6,'Gb':6,
@@ -1193,32 +1206,22 @@ function initCMajorScalePractice() {
         
         const tonicIdx = chromaticIdx[scale[0]];
         const noteIdx = chromaticIdx[note];
-        
-        // 从主音开始的半音序列
-        const chromaticFromTonic = [];
-        for (let i = 0; i < 13; i++) {
-            chromaticFromTonic.push(chromaticBase[(tonicIdx + i) % 12]);
+        if (tonicIdx === undefined || noteIdx === undefined) return '';
+
+        const semitoneFromTonic = (noteIdx - tonicIdx + 12) % 12;
+        const semitoneMap = {
+            1:  { sharp: '#1', flat: 'b2' },
+            3:  { sharp: '#2', flat: 'b3' },
+            6:  { sharp: '#4', flat: 'b5' },
+            8:  { sharp: '#5', flat: 'b6' },
+            10: { sharp: '#6', flat: 'b7' }
+        };
+
+        if (semitoneMap[semitoneFromTonic]) {
+            const pair = semitoneMap[semitoneFromTonic];
+            return isFlatScale ? pair.flat : pair.sharp;
         }
-        
-        // 找到当前音符在半音序列中的位置
-        let notePos = -1;
-        for (let i = 0; i < chromaticFromTonic.length; i++) {
-            if (isEnharmonic(chromaticFromTonic[i], note)) {
-                notePos = i;
-                break;
-            }
-        }
-        
-        // 向前寻找最近的音阶内音符
-        for (let step = notePos - 1; step >= 0; step--) {
-            const chromaticNote = chromaticFromTonic[step];
-            for (let i = 0; i < scale.length; i++) {
-                if (isEnharmonic(chromaticNote, scale[i])) {
-                    return '#' + (i === 7 ? '1' : (i + 1).toString());
-                }
-            }
-        }
-        
+
         return '';
     }
 

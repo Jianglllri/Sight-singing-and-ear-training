@@ -227,7 +227,9 @@
             span.className = 'bar';
             bar.forEach(function (note) {
                 var tok = document.createElement('span');
-                tok.textContent = noteToToken(note);
+                var displayText = noteToToken(note);
+                if (note.isDotted) displayText += '.';
+                tok.textContent = displayText;
                 tok.className = 'jianpu-note-tok';
                 tok.setAttribute('data-note-idx', globalIndex);
                 if (note.isRest) tok.classList.add('rest');

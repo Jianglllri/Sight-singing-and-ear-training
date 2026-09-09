@@ -357,6 +357,26 @@
             position: relative;
         }
         
+        /* 黑键简谱变音记号徽章（#1/b2, #2/b3, #4/b5, #5/b6, #6/b7，与乐理第七课教材完全对齐） */
+        .badge-black {
+            background: rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 220, 100, 0.5);
+            color: #ffeb3b;
+            font-size: 0.72rem;
+            line-height: 1.1;
+            padding: 2px 4px;
+            width: auto;
+            min-width: 32px;
+            height: auto;
+            border-radius: 4px;
+            margin-bottom: 0.35rem;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
         /* 中音区（C4 组）：淡薄荷绿 */
         .badge-c4 {
             background-color: #dcfce7;
@@ -986,6 +1006,29 @@
             return { symbol, badgeClass };
         }
 
+        // 黑键简谱升降变音记号映射（与乐理第七课完全对齐：C#=#1/b2, D#=#2/b3, F#=#4/b5, G#=#5/b6, A#=#6/b7）
+        const BLACK_KEY_JIANPU_MAP = {
+            'C#': { sharp: '1', flat: '2' },
+            'D#': { sharp: '2', flat: '3' },
+            'F#': { sharp: '4', flat: '5' },
+            'G#': { sharp: '5', flat: '6' },
+            'A#': { sharp: '6', flat: '7' }
+        };
+
+        function getBlackKeyBadgeInfo(note, octave) {
+            const base = BLACK_KEY_JIANPU_MAP[note];
+            if (!base) return null;
+            let dot = '';
+            if (octave === 5) dot = '\u0307';
+            else if (octave >= 6) dot = '\u0308';
+            else if (octave === 3) dot = '\u0323';
+            else if (octave <= 2) dot = '\u0324';
+
+            const sText = '#' + base.sharp + dot;
+            const fText = 'b' + base.flat + dot;
+            return { sText, fText };
+        }
+
         // 生成完整的88键钢琴键盘
         function generateFullPianoKeyboard(container) {
             container.innerHTML = '';
@@ -1019,8 +1062,17 @@
                 enharmonicElement.className = 'enharmonic-name';
                 enharmonicElement.textContent = enharmonicName;
                 
-                // 白键添加简谱彩色唱名徽章
-                if (!isBlack) {
+                // 白键与黑键均展示简谱唱名徽章（黑键展示教材标准升降双记号：#1/b2, #2/b3, #4/b5, #5/b6, #6/b7）
+                if (isBlack) {
+                    const blackInfo = getBlackKeyBadgeInfo(note, octave);
+                    if (blackInfo) {
+                        const badge = document.createElement('div');
+                        badge.className = 'badge-black';
+                        badge.innerHTML = `<span style="font-weight:700;">${blackInfo.sText}</span><span style="font-size:0.62rem;opacity:0.9;">${blackInfo.fText}</span>`;
+                        badge.title = `升记号：${blackInfo.sText} (升高半音) | 降记号：${blackInfo.fText} (降低半音)`;
+                        key.appendChild(badge);
+                    }
+                } else {
                     const badgeInfo = getJianpuBadgeInfo(note, octave);
                     if (badgeInfo) {
                         const badge = document.createElement('div');

@@ -70,14 +70,21 @@
         }
         #jianpu-text {
             width: 100%;
-            min-height: 84px;
-            margin-top: 0.5rem;
-            padding: 0.6rem 0.8rem;
+            height: 120px;
+            min-height: 100px;
+            max-height: 240px;
+            margin-top: 0.6rem;
+            padding: 0.75rem 0.9rem;
             border: 1px solid #d9bcc9;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            font-size: 1rem;
+            border-radius: 10px;
+            font-family: 'Courier New', 'Consolas', monospace;
+            font-size: 1.02rem;
+            line-height: 1.7;
             background: #fff;
+            box-sizing: border-box;
+            resize: vertical;
+            white-space: pre-wrap;
+            word-break: break-all;
         }
         .jianpu-actions {
             display: flex;
@@ -86,20 +93,31 @@
         }
         .jianpu-preview {
             margin-top: 1rem;
-            padding: 0.75rem 1rem;
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 6px;
-            font-family: 'Courier New', monospace;
+            padding: 0.85rem 1.1rem;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(176, 58, 107, 0.25);
+            border-radius: 10px;
+            box-shadow: inset 0 1px 4px rgba(60, 20, 40, 0.05);
+            font-family: 'Courier New', 'Consolas', monospace;
             font-size: 1.15rem;
-            line-height: 1.9;
+            line-height: 2.2;
             display: none;
+            max-height: 150px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            word-wrap: break-word;
         }
         .jianpu-preview .bar + .bar::before {
             content: '| ';
             color: #b03a6b;
+            font-weight: 600;
         }
-        .jianpu-preview .bar { margin-right: 0.25rem; white-space: nowrap; }
+        .jianpu-preview .bar {
+            display: inline-block;
+            margin-right: 0.5rem;
+            margin-bottom: 0.35rem;
+            white-space: nowrap;
+        }
         .jianpu-preview .rest { color: #adb5bd; }
         
         /* 播放整曲时实时跳动的音符光标 */
@@ -113,17 +131,43 @@
         
         /* 减时线时值展现：八分音符单减时线、十六分音符双减时线 */
         .jianpu-note-tok.is-eighth {
-            border-bottom: 2.5px solid currentColor;
-            padding-bottom: 2px;
-            margin-bottom: 1px;
-            line-height: 1.1;
+            padding-bottom: 4px;
+            margin-bottom: 2px;
+        }
+        .jianpu-note-tok.is-eighth::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 2px;
+            background: currentColor;
+            border-radius: 1px;
         }
         
         .jianpu-note-tok.is-sixteenth {
-            border-bottom: 4.5px double currentColor;
-            padding-bottom: 1px;
-            margin-bottom: 1px;
-            line-height: 1.1;
+            padding-bottom: 4px;
+            margin-bottom: 4px;
+        }
+        .jianpu-note-tok.is-sixteenth::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 2px;
+            background: currentColor;
+            border-radius: 1px;
+        }
+        .jianpu-note-tok.is-sixteenth::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: -5px;
+            height: 2px;
+            background: currentColor;
+            border-radius: 1px;
         }
         
         .jianpu-note-tok.playing {
