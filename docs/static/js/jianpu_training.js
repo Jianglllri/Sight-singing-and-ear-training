@@ -197,6 +197,7 @@
         }
         songNotes = notes;
         renderPreview();
+        renderRichPreview();
         if (notes.allValid || silent) {
             setStatus('曲谱解析成功，共 ' + notes.length + ' 个音符，点击「下一题」开始', 'ok');
         }
@@ -1048,6 +1049,82 @@
                 var text = btn.getAttribute('data-insert') || '';
                 insertAtCursor(textarea, text);
             });
+        });
+        // 实时富文本简谱预览
+        textarea.addEventListener('input', renderRichPreview);
+        renderRichPreview();
+    }
+
+    // ===== 实时富文本简谱预览：textarea 输入时即时渲染带下划线的简谱 =====
+    function renderRichPreview() {
+        var srcEl = document.getElementById('jianpu-text');
+        var targetEl = document.getElementById('jianpu-rich-preview');
+        if (!srcEl || !targetEl) return;
+
+        var src = srcEl.value || '';
+        var notes = parseJianpu(src);
+
+        targetEl.innerHTML = '';
+        if (!notes.length) return;
+
+        // 按小节分组
+        var bars = [];
+        var cur = null;
+        var curBarText = null;
+        notes.forEach(function (note) {
+            if (note.barText !== curBarText) {
+                cur = [];
+                bars.push(cur);
+                curBarText = note.barText;
+            }
+            cur.push(note);
+        });
+
+        function lineTypeOf(note) {
+            if (note.isRest) return 0;
+            if (note.isSixteenth) return 2;
+            if (note.isEighth) return 1;
+            return 0;
+        }
+
+        function makeRpNote(note) {
+            var span = document.createElement('span');
+            span.className = 'rp-note';
+            if (note.isRest) span.classList.add('rp-rest');
+            if (note.isDotted) span.classList.add('rp-dotted');
+            var text = noteToToken(note);
+            if (note.isDotted) text += '·';
+            span.textContent = text;
+            return span;
+        }
+
+        bars.forEach(function (bar, barIdx) {
+            if (barIdx > 0) {
+                var sep = document.createElement('span');
+                sep.className = 'rp-bar-sep';
+                sep.textContent = '|';
+                targetEl.appendChild(sep);
+            }
+            var i = 0;
+            while (i < bar.length) {
+                var note = bar[i];
+                var lt = lineTypeOf(note);
+                if (lt === 0 || note.isDotted) {
+                    targetEl.appendChild(makeRpNote(note));
+                    i++;
+                    continue;
+                }
+                var beam = document.createElement('span');
+                beam.className = 'rp-beam ' + (lt === 2 ? 'rp-sixteenth' : 'rp-eighth');
+                while (i < bar.length) {
+                    var n = bar[i];
+                    if (lineTypeOf(n) !== lt) break;
+                    if (n.isDotted) break;
+                    beam.appendChild(makeRpNote(n));
+                    i++;
+                }
+                targetEl.appendChild(beam);
+            }
         });
     }
 })();

@@ -344,6 +344,84 @@
             font-family: 'Courier New', 'Consolas', monospace;
             font-weight: 600;
         }
+
+        /* 实时富文本简谱预览层：下划线紧贴数字 1 下方 */
+        .jianpu-rich-preview {
+            margin-top: 0.6rem;
+            padding: 0.85rem 1rem 0.95rem;
+            background: linear-gradient(180deg, #fffdfd 0%, #fff8fa 100%);
+            border: 1px solid rgba(176, 58, 107, 0.25);
+            border-radius: 10px;
+            font-family: 'Courier New', 'Consolas', monospace;
+            font-size: 1.25rem;
+            line-height: 2;
+            min-height: 56px;
+            color: #2b2b2b;
+            word-break: break-all;
+            white-space: pre-wrap;
+            box-shadow: inset 0 1px 3px rgba(60, 20, 40, 0.04);
+        }
+        .jianpu-rich-preview:empty::before {
+            content: '⬆ 上方输入或点击按钮，下方实时预览带下划线的简谱 …';
+            color: #b09aa6;
+            font-size: 0.95rem;
+            font-style: italic;
+        }
+        .rp-bar-sep {
+            display: inline-block;
+            color: #b03a6b;
+            font-weight: 700;
+            margin: 0 4px 0 1px;
+        }
+        .rp-note {
+            display: inline-block;
+            padding: 0 1px;
+            position: relative;
+            line-height: 1;
+        }
+        .rp-note.rp-rest { color: #adb5bd; }
+        .rp-note.rp-dotted {
+            padding-right: 10px;
+        }
+        .rp-note.rp-dotted::after {
+            content: '·';
+            font-weight: 700;
+            font-size: 1.3em;
+            margin-left: 2px;
+            vertical-align: 0.18em;
+            color: currentColor;
+        }
+        /* 减时线：紧贴数字 1 下方 */
+        .rp-beam {
+            display: inline-block;
+            white-space: nowrap;
+            position: relative;
+            padding-bottom: 0;
+            line-height: 1;
+        }
+        .rp-beam .rp-note { padding: 0 1px; }
+        /* 八分音符：单条下划线紧贴数字底部 */
+        .rp-beam.rp-eighth {
+            border-bottom: 2.5px solid currentColor;
+            padding-bottom: 1px;
+            margin-bottom: 1px;
+        }
+        /* 十六分音符：双下划线（border 一条 + ::after 第二条） */
+        .rp-beam.rp-sixteenth {
+            border-bottom: 2.5px solid currentColor;
+            padding-bottom: 1px;
+            margin-bottom: 6px;
+        }
+        .rp-beam.rp-sixteenth::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: -5px;
+            height: 2.5px;
+            background: currentColor;
+            border-radius: 1px;
+        }
     </style>
 </head>
 <body>
@@ -449,6 +527,8 @@
                 </div>
 
                 <textarea id="jianpu-text" spellcheck="false" placeholder="在此输入简谱记号，或选择上方经典曲目..."></textarea>
+                <!-- 实时富文本简谱预览：下划线紧贴数字 1 下方 -->
+                <div class="jianpu-rich-preview" id="jianpu-rich-preview" aria-label="实时简谱预览"></div>
                 <div class="jianpu-actions">
                     <button class="btn btn-outline-primary" id="jianpu-load">解析曲谱</button>
                     <button class="btn btn-outline-success btn-sm" id="jianpu-toggle-save">＋ 存为新歌曲到曲库</button>
