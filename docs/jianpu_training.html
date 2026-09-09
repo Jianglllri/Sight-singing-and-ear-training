@@ -129,45 +129,42 @@
             position: relative;
         }
         
-        /* 减时线时值展现：八分音符单减时线、十六分音符双减时线 */
-        .jianpu-note-tok.is-eighth {
-            padding-bottom: 4px;
-            margin-bottom: 2px;
-        }
-        .jianpu-note-tok.is-eighth::after {
-            content: '';
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            height: 2px;
-            background: currentColor;
-            border-radius: 1px;
-        }
-        
-        .jianpu-note-tok.is-sixteenth {
+        /* 减时线时值展现：连续同拍值音符用 beam 容器画连续下划线（八分=单线，十六分=双线） */
+        .jianpu-beam {
+            display: inline-block;
             padding-bottom: 4px;
             margin-bottom: 4px;
+            white-space: nowrap;
+            position: relative;
         }
-        .jianpu-note-tok.is-sixteenth::after {
+        .jianpu-beam.beam-single {
+            border-bottom: 2px solid currentColor;
+        }
+        .jianpu-beam.beam-double {
+            border-bottom: 2px solid currentColor;
+        }
+        .jianpu-beam.beam-double::after {
             content: '';
             position: absolute;
             left: 0;
             right: 0;
-            bottom: 0;
+            bottom: -7px;
             height: 2px;
             background: currentColor;
             border-radius: 1px;
         }
-        .jianpu-note-tok.is-sixteenth::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: -5px;
-            height: 2px;
-            background: currentColor;
-            border-radius: 1px;
+
+        /* 附点：时值延长一半，标注于音符右上角 */
+        .jianpu-note-tok.is-dotted {
+            padding-right: 6px;
+        }
+        .jianpu-note-tok.is-dotted::after {
+            content: '·';
+            font-weight: 700;
+            font-size: 1.25em;
+            margin-left: 1px;
+            vertical-align: 0.25em;
+            color: currentColor;
         }
         
         .jianpu-note-tok.playing {
@@ -317,6 +314,36 @@
             margin-top: 0.6rem;
         }
         .jianpu-zoom-controls button { width: 2.4rem; }
+
+        /* 简谱输入助手按钮工具栏 */
+        .jianpu-input-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem 0.85rem;
+            align-items: center;
+            margin-top: 0.7rem;
+            padding: 0.55rem 0.75rem;
+            background: linear-gradient(135deg, rgba(255, 247, 251, 0.85) 0%, rgba(255, 240, 245, 0.75) 100%);
+            border: 1px solid rgba(176, 58, 107, 0.2);
+            border-radius: 10px;
+        }
+        .jianpu-toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            flex-wrap: wrap;
+        }
+        .jianpu-toolbar-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #8a4a6a;
+            margin-right: 0.3rem;
+        }
+        .jianpu-input-toolbar .btn {
+            min-width: 2.2rem;
+            font-family: 'Courier New', 'Consolas', monospace;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -372,6 +399,52 @@
                             <option value="Ab">1 = bA</option>
                         </select>
                         <button class="btn btn-success btn-sm" id="jianpu-save-btn">💾 确认存入数据库</button>
+                    </div>
+                </div>
+
+                <!-- 简谱输入助手按钮工具栏（点击按钮在光标处插入字符） -->
+                <div class="jianpu-input-toolbar" id="jianpu-input-toolbar">
+                    <div class="jianpu-toolbar-group">
+                        <span class="jianpu-toolbar-label">🎵 数字</span>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-insert="1">1</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-insert="2">2</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-insert="3">3</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-insert="4">4</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-insert="5">5</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-insert="6">6</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-insert="7">7</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-insert="0" title="休止符">0</button>
+                    </div>
+                    <div class="jianpu-toolbar-group">
+                        <span class="jianpu-toolbar-label">🎚 音区</span>
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-insert="&#x0307;" title="高音点(数字上方)">1&#x0307;</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-insert="&#x0323;" title="低音点(数字下方)">1&#x0323;</button>
+                    </div>
+                    <div class="jianpu-toolbar-group">
+                        <span class="jianpu-toolbar-label">⏱ 时值</span>
+                        <button type="button" class="btn btn-outline-success btn-sm" data-insert="_" title="单减时线 (八分音符 ½拍)">8分 _</button>
+                        <button type="button" class="btn btn-outline-success btn-sm" data-insert="__" title="双减时线 (十六分音符 ¼拍)">16分 __</button>
+                        <button type="button" class="btn btn-outline-success btn-sm" data-insert="." title="附点 (延长一半)">附点 ·</button>
+                        <button type="button" class="btn btn-outline-success btn-sm" data-insert="-" title="延音线 (延长 1 拍)">延音 -</button>
+                    </div>
+                    <div class="jianpu-toolbar-group">
+                        <span class="jianpu-toolbar-label">📐 结构</span>
+                        <button type="button" class="btn btn-outline-warning btn-sm" data-insert="|" title="小节线">小节 |</button>
+                    </div>
+                    <div class="jianpu-toolbar-group">
+                        <span class="jianpu-toolbar-label">🎼 变音</span>
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-insert="#" title="升号">升 #</button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-insert="b" title="降号">降 b</button>
+                    </div>
+                    <div class="jianpu-toolbar-group">
+                        <span class="jianpu-toolbar-label">🎹 调号</span>
+                        <button type="button" class="btn btn-outline-info btn-sm" data-insert="1=C " title="1 = C 大调">1=C</button>
+                        <button type="button" class="btn btn-outline-info btn-sm" data-insert="1=D " title="1 = D 大调">1=D</button>
+                        <button type="button" class="btn btn-outline-info btn-sm" data-insert="1=E " title="1 = E 大调">1=E</button>
+                        <button type="button" class="btn btn-outline-info btn-sm" data-insert="1=F " title="1 = F 大调">1=F</button>
+                        <button type="button" class="btn btn-outline-info btn-sm" data-insert="1=G " title="1 = G 大调">1=G</button>
+                        <button type="button" class="btn btn-outline-info btn-sm" data-insert="1=A " title="1 = A 大调">1=A</button>
+                        <button type="button" class="btn btn-outline-info btn-sm" data-insert="1=bB " title="1 = bB 大调">1=bB</button>
                     </div>
                 </div>
 

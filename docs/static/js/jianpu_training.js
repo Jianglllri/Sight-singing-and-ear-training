@@ -221,27 +221,52 @@
             cur.push(note);
         });
 
+        function lineTypeOf(note) {
+            if (note.isRest) return 0;
+            if (note.isSixteenth) return 2;
+            if (note.isEighth) return 1;
+            return 0;
+        }
+
+        function makeTok(note, idx) {
+            var tok = document.createElement('span');
+            tok.className = 'jianpu-note-tok';
+            tok.setAttribute('data-note-idx', idx);
+            if (note.isRest) tok.classList.add('rest');
+            if (note.isDotted) tok.classList.add('is-dotted');
+            tok.textContent = noteToToken(note);
+            return tok;
+        }
+
         var globalIndex = 0;
         bars.forEach(function (bar) {
-            var span = document.createElement('span');
-            span.className = 'bar';
-            bar.forEach(function (note) {
-                var tok = document.createElement('span');
-                var displayText = noteToToken(note);
-                if (note.isDotted) displayText += '.';
-                tok.textContent = displayText;
-                tok.className = 'jianpu-note-tok';
-                tok.setAttribute('data-note-idx', globalIndex);
-                if (note.isRest) tok.classList.add('rest');
-                if (note.isEighth) tok.classList.add('is-eighth');
-                if (note.isSixteenth) tok.classList.add('is-sixteenth');
-                if (note.isDotted) tok.classList.add('is-dotted');
-                span.appendChild(tok);
-                var space = document.createTextNode(' ');
-                span.appendChild(space);
-                globalIndex++;
-            });
-            preview.appendChild(span);
+            var barSpan = document.createElement('span');
+            barSpan.className = 'bar';
+            var i = 0;
+            while (i < bar.length) {
+                var note = bar[i];
+                var lt = lineTypeOf(note);
+                // 休止符、四分音符、附点音符单独渲染（不参与 beam）
+                if (lt === 0 || note.isDotted) {
+                    barSpan.appendChild(makeTok(note, globalIndex++));
+                    barSpan.appendChild(document.createTextNode(' '));
+                    i++;
+                    continue;
+                }
+                // 收集连续相同 lineType（且不带附点）的音符，组成 beam
+                var beam = document.createElement('span');
+                beam.className = 'jianpu-beam' + (lt === 2 ? ' beam-double' : ' beam-single');
+                while (i < bar.length) {
+                    var n = bar[i];
+                    if (lineTypeOf(n) !== lt) break;
+                    if (n.isDotted) break;
+                    beam.appendChild(makeTok(n, globalIndex++));
+                    i++;
+                }
+                barSpan.appendChild(beam);
+                barSpan.appendChild(document.createTextNode(' '));
+            }
+            preview.appendChild(barSpan);
         });
     }
 
@@ -975,6 +1000,7 @@
         loadLibraryFromDB();
         updateScore();
         initImageImport();
+        initInputToolbar();
 
         document.getElementById('jianpu-playall').addEventListener('click', playAll);
 
@@ -999,4 +1025,29 @@
             }
         });
     });
+
+    // ===== 简谱输入助手工具栏：点击按钮在 textarea 光标处插入字符 =====
+    function insertAtCursor(textarea, text) {
+        var start = textarea.selectionStart;
+        var end = textarea.selectionEnd;
+        var value = textarea.value;
+        textarea.value = value.substring(0, start) + text + value.substring(end);
+        var newPos = start + text.length;
+        textarea.setSelectionRange(newPos, newPos);
+        textarea.focus();
+        // 触发 input 事件以便其他监听器响应
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function initInputToolbar() {
+        var textarea = document.getElementById('jianpu-text');
+        if (!textarea) return;
+        document.querySelectorAll('#jianpu-input-toolbar [data-insert]').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                var text = btn.getAttribute('data-insert') || '';
+                insertAtCursor(textarea, text);
+            });
+        });
+    }
 })();
