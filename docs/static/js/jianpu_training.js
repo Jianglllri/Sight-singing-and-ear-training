@@ -63,16 +63,38 @@
     var userPicks = [];   // 听唱名的选择
     var lastSegment = null; // 供重听
 
-    // ===== 简谱解析 =====
+    // ===== 简谱解析（支持四分音符 1拍、八分音符 0.5拍、十六分音符 0.25拍、附点及延音） =====
 
-    // 解析单个记号：如 1 / #4 / b7 / B7 / ♯4 / ♭7 / 1̇ / 3̰ / 2'' / 1, / 0（休止） / 1.（附点）
+    // 解析单个记号：如 1 (四分) / 1_ 或 1̲ (八分) / 1__ (十六分) / 1. (附点四分1.5拍) / 1_. (附点八分0.75拍) / #4_ / b7_ / 1̇_ / 0_
     function parseJianpuToken(token) {
         if (!token) return null;
-        if (token === '0' || token === 'o' || token === 'O') return { isRest: true, degree: 0, accidental: 0, octave: 0, beats: 1, token: '0' };
+        var raw = token;
+
+        // 检测减时线（下划线 _ 或 Unicode 组合下划线 \u0332 或反斜杠 \）
+        var underlineCount = (raw.match(/[_\\|\u0332]/g) || []).length;
+        // 检测附点 .
+        var isDotted = raw.indexOf('.') !== -1;
+
+        // 计算拍数 beats：默认四分音符为 1 拍，每条减时线将时值减半
+        var beats = 1.0;
+        if (underlineCount === 1) {
+            beats = 0.5;   // 八分音符（半拍）
+        } else if (underlineCount >= 2) {
+            beats = 0.25;  // 十六分音符（四分之一拍）
+        }
+        if (isDotted) {
+            beats *= 1.5;  // 附点增加一半时值
+        }
+
+        // 清理时值标记以提取音高
+        var cleanToken = raw.replace(/[_\\|\u0332.]/g, '');
+        if (cleanToken === '0' || cleanToken === 'o' || cleanToken === 'O') {
+            return { isRest: true, degree: 0, accidental: 0, octave: 0, beats: beats, rawToken: raw, isEighth: underlineCount === 1, isSixteenth: underlineCount >= 2, isDotted: isDotted };
+        }
 
         // 归一化音乐符号：♭→b、♯→#，大写 B 视为降号（OCR 常见），i/I 视为高音 1
-        var t = token.replace(/♭/g, 'b').replace(/♯/g, '#').replace(/B/g, 'b')
-                     .replace(/[iI]/g, '1\u0307');
+        var t = cleanToken.replace(/♭/g, 'b').replace(/♯/g, '#').replace(/B/g, 'b')
+                          .replace(/[iI]/g, '1\u0307');
         var accidental = 0;
         if (t.charAt(0) === '#') { accidental = 1; t = t.slice(1); }
         else if (t.charAt(0) === 'b') { accidental = -1; t = t.slice(1); }
@@ -86,10 +108,17 @@
         var lowDots = (t.match(/[\u0323,]/g) || []).length;
         var octave = highDots - lowDots;
 
-        // 附点处理：若含 . 则时长延长 1.5 倍
-        var beats = t.indexOf('.') !== -1 ? 1.5 : 1;
-
-        return { isRest: false, degree: degree, accidental: accidental, octave: octave, beats: beats, token: token };
+        return {
+            isRest: false,
+            degree: degree,
+            accidental: accidental,
+            octave: octave,
+            beats: beats,
+            rawToken: raw,
+            isEighth: underlineCount === 1,
+            isSixteenth: underlineCount >= 2,
+            isDotted: isDotted
+        };
     }
 
     // 解析整段简谱文本 -> 音符数组（- 延音累加 beats，| 分小节只做分组）
@@ -100,7 +129,7 @@
         bars.forEach(function (bar) {
             bar = bar.trim();
             if (!bar) return;
-            // 归一化：全角数字、音乐符号、字母 i（高音 1）、字母 o（休止符 0）、附点
+            // 归一化：全角数字、音乐符号、字母 i（高音 1）、字母 o（休止符 0）、中文附点
             bar = bar.replace(/[０-９]/g, function (s) { return String.fromCharCode(s.charCodeAt(0) - 0xfee0); });
             bar = bar.replace(/♭/g, 'b').replace(/♯/g, '#').replace(/B/g, 'b');
             bar = bar.replace(/[iI]/g, '1\u0307');
@@ -108,8 +137,8 @@
             bar = bar.replace(/(?<=[0-7|\-\s])[oO](?=[0-7|\-\s]|$)/g, '0');
             bar = bar.replace(/^[oO](?=[0-7|\-\s]|$)/g, '0');
 
-            // 按音符记号切分：升降号 + 数字 + 高低音点（组合符/撇号/逗号）+ 可选附点 .，以及延音线「-」
-            var tokens = bar.match(/(?:[#b]?[0-7][\u0307'\u0323,.]*)|-/g) || [];
+            // 按音符记号切分：升降号 + 数字 + 高低音点 + 可选减时线(_ / \u0332 / \) + 可选附点 .，以及延音线「-」
+            var tokens = bar.match(/(?:[#b]?[0-7][\u0307'\u0323,._\u0332\\]*)|-/g) || [];
             tokens.forEach(function (token) {
                 if (token === '-') {
                     var last = result[result.length - 1];
@@ -198,11 +227,16 @@
             span.className = 'bar';
             bar.forEach(function (note) {
                 var tok = document.createElement('span');
-                tok.textContent = noteToToken(note) + ' ';
+                tok.textContent = noteToToken(note);
                 tok.className = 'jianpu-note-tok';
                 tok.setAttribute('data-note-idx', globalIndex);
                 if (note.isRest) tok.classList.add('rest');
+                if (note.isEighth) tok.classList.add('is-eighth');
+                if (note.isSixteenth) tok.classList.add('is-sixteenth');
+                if (note.isDotted) tok.classList.add('is-dotted');
                 span.appendChild(tok);
+                var space = document.createTextNode(' ');
+                span.appendChild(space);
                 globalIndex++;
             });
             preview.appendChild(span);
@@ -240,6 +274,10 @@
                 degree: note.degree,
                 accidental: note.accidental,
                 octave: note.octave,
+                beats: note.beats || 1.0,
+                isEighth: note.isEighth,
+                isSixteenth: note.isSixteenth,
+                isDotted: note.isDotted,
                 midi: midi,
                 note: playable.note,
                 pcOctave: playable.octave,
@@ -248,17 +286,25 @@
         });
     }
 
+    // 动态真实节拍发声：根据音符时值（四分/八分/十六分/附点/延音）计算真实毫秒时长
     function playSegment(notes, force) {
         if (!window.audioSystem || !notes || !notes.length) return;
         if (playing && !force) return;
         playing = true;
+        var bpm = 82;
+        var beatMs = 60000 / bpm;
+        var t = 0;
         notes.forEach(function (p, i) {
+            var b = p.beats || 1.0;
+            var durMs = b * beatMs;
             setTimeout(function () {
-                audioSystem.playNote(p.note, p.pcOctave, 0.9);
+                var playSec = Math.max(0.18, durMs * 0.00085);
+                audioSystem.playNote(p.note, p.pcOctave, playSec);
                 if (i === notes.length - 1) {
-                    setTimeout(function () { playing = false; }, 900);
+                    setTimeout(function () { playing = false; }, durMs + 100);
                 }
-            }, i * PLAY_GAP_MS);
+            }, t);
+            t += durMs;
         });
     }
 
@@ -482,8 +528,11 @@
         if (preview) preview.querySelectorAll('.jianpu-note-tok').forEach(function(el) { el.classList.remove('playing'); });
 
         var t = 0;
+        var bpm = 82; // 默认基准拍速 (约 730ms 每四分音符)
+        var beatMs = 60000 / bpm;
         songNotes.forEach(function (note, idx) {
-            var beats = note.beats || 1;
+            var beats = note.beats || 1.0;
+            var noteDurMs = beats * beatMs;
             setTimeout(function () {
                 if (token !== playAllToken) return;
                 // 更新高亮跳动光标
@@ -497,11 +546,11 @@
                 if (!note.isRest) {
                     var midi = jianpuToMidi(note);
                     var p = midiToPlayable(midi);
-                    var dur = Math.max(0.3, 0.45 * beats);
-                    window.audioSystem.playNote(p.note, p.octave, dur);
+                    var durSec = Math.max(0.18, noteDurMs * 0.00085);
+                    window.audioSystem.playNote(p.note, p.octave, durSec);
                 }
             }, t);
-            t += 500 * beats;
+            t += noteDurMs;
         });
         setTimeout(function () {
             if (token === playAllToken) {

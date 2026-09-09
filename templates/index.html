@@ -21,33 +21,26 @@
     <main>
         <section class="hero-section">
             <div class="container text-center">
-                <h1 class="hero-title">听到音符之间的秘密</h1>
-                <p class="hero-subtitle">像科学家解构DNA一样，解码音乐的基因</p>
-                
-                <!-- 核心口号轮播 -->
-                <div class="slogan-carousel">
-                    <div class="slogan-item active">音乐不是听见的，是解构的</div>
-                    <div class="slogan-item">你的耳朵可以像眼睛一样精确</div>
-                    <div class="slogan-item">从‘大概准’到绝对音感之间，只差一套科学方法</div>
-                </div>
+                <h1 class="hero-title">视唱练耳</h1>
+                <p class="hero-subtitle">每天练耳 10 min，成就绝对音感</p>
 
                 <!-- 训练选项 -->
                 <div class="training-options">
+                    <a href="{{ url_for('piano_simulator') }}" class="training-option">
+                        <div class="music-symbol">🎹</div>
+                        <h3>自由训练 · 模拟钢琴</h3>
+                    </a>
+                    <a href="{{ url_for('pitch_training') }}" class="training-option">
+                        <div class="music-symbol">📈</div>
+                        <h3>音高训练</h3>
+                    </a>
+                    <a href="{{ url_for('jianpu_training') }}" class="training-option">
+                        <div class="music-symbol">🎼</div>
+                        <h3>简谱听写</h3>
+                    </a>
                     <a href="{{ url_for('c_major_scale') }}" class="training-option">
                         <div class="music-symbol">♩</div>
                         <h3>自然大调音阶训练</h3>
-                    </a>
-                    <a href="{{ url_for('jianpu_training') }}" class="training-option">
-                        <div class="music-symbol">♪</div>
-                        <h3>简谱听写</h3>
-                    </a>
-                    <a href="{{ url_for('piano_simulator') }}" class="training-option">
-                        <div class="music-symbol">♫</div>
-                        <h3>自由训练·模拟钢琴</h3>
-                    </a>
-                    <a href="{{ url_for('pitch_training') }}" class="training-option">
-                        <div class="music-symbol">♬</div>
-                        <h3>音高训练</h3>
                     </a>
                 </div>
             </div>

@@ -108,6 +108,22 @@
             padding: 1px 4px;
             border-radius: 4px;
             transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+        
+        /* 减时线时值展现：八分音符单减时线、十六分音符双减时线 */
+        .jianpu-note-tok.is-eighth {
+            border-bottom: 2.5px solid currentColor;
+            padding-bottom: 2px;
+            margin-bottom: 1px;
+            line-height: 1.1;
+        }
+        
+        .jianpu-note-tok.is-sixteenth {
+            border-bottom: 4.5px double currentColor;
+            padding-bottom: 1px;
+            margin-bottom: 1px;
+            line-height: 1.1;
         }
         
         .jianpu-note-tok.playing {
@@ -322,8 +338,7 @@
                 </div>
                 <div class="jianpu-preview" id="jianpu-preview"></div>
                 <div class="jianpu-hint">
-                    语法：1-7 唱名；# 升号、b 降号（如 #4）；高音点直接缀在音后（1̇，U+0307），低音点同样支持下加点（U+0323），
-                    亦兼容 1' / 1, 写法；- 延音；0 休止；| 小节线；空格分隔。默认 1 = C（C4）。
+                    🎵 <b>时值与节拍语法</b>：四分音符直接输入（如 <code>1</code>，1拍）；八分音符加减时线（如 <code>1_</code>、<code>5_</code> 或 <code>1̲</code>，半拍）；十六分音符（如 <code>1__</code>，1/4拍）；附点（如 <code>1.</code> 或 <code>1_.</code>）；<code>-</code> 延音；<code>0</code> 休止；<code>|</code> 分小节；支持 12 半音任意移调弹奏。
                 </div>
             </div>
 
