@@ -91,90 +91,12 @@
             gap: 0.75rem;
             margin-top: 0.75rem;
         }
-        .jianpu-preview {
-            margin-top: 1rem;
-            padding: 0.85rem 1.1rem;
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(176, 58, 107, 0.25);
-            border-radius: 10px;
-            box-shadow: inset 0 1px 4px rgba(60, 20, 40, 0.05);
-            font-family: 'Courier New', 'Consolas', monospace;
-            font-size: 1.15rem;
-            line-height: 2.2;
-            display: none;
-            max-height: 150px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            word-wrap: break-word;
-        }
-        .jianpu-preview .bar + .bar::before {
-            content: '| ';
-            color: #b03a6b;
-            font-weight: 600;
-        }
-        .jianpu-preview .bar {
-            display: inline-block;
-            margin-right: 0.5rem;
-            margin-bottom: 0.35rem;
-            white-space: nowrap;
-        }
-        .jianpu-preview .rest { color: #adb5bd; }
-        
-        /* 播放整曲时实时跳动的音符光标 */
-        .jianpu-note-tok {
-            display: inline-block;
-            padding: 1px 4px;
-            border-radius: 4px;
-            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-        }
-        
-        /* 减时线时值展现：连续同拍值音符用 beam 容器画连续下划线（八分=单线，十六分=双线） */
-        .jianpu-beam {
-            display: inline-block;
-            padding-bottom: 4px;
-            margin-bottom: 4px;
-            white-space: nowrap;
-            position: relative;
-        }
-        .jianpu-beam.beam-single {
-            border-bottom: 2px solid currentColor;
-        }
-        .jianpu-beam.beam-double {
-            border-bottom: 2px solid currentColor;
-        }
-        .jianpu-beam.beam-double::after {
-            content: '';
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: -7px;
-            height: 2px;
-            background: currentColor;
-            border-radius: 1px;
-        }
-
-        /* 附点：时值延长一半，标注于音符右上角 */
-        .jianpu-note-tok.is-dotted {
-            padding-right: 6px;
-        }
-        .jianpu-note-tok.is-dotted::after {
-            content: '·';
-            font-weight: 700;
-            font-size: 1.25em;
-            margin-left: 1px;
-            vertical-align: 0.25em;
-            color: currentColor;
-        }
-        
-        .jianpu-note-tok.playing {
-            background: #b03a6b;
-            color: #fff !important;
-            transform: scale(1.22);
-            box-shadow: 0 0 12px rgba(176, 58, 107, 0.7);
+        /* 播放整曲时 SVG 谱面上当前音符的高亮光标 */
+        .jianpu-svg-preview text.jp-note.playing {
+            fill: #b03a6b !important;
             font-weight: bold;
         }
-        
+
         .jianpu-hint {
             color: #8a6a78;
             font-size: 0.85rem;
@@ -271,13 +193,34 @@
             box-shadow: 0 8px 24px rgba(60, 20, 40, 0.10);
             padding: 1.25rem 1.5rem;
             margin-bottom: 1.25rem;
-            display: none;
+            display: flex;
+            flex-direction: column;
         }
-        .jianpu-image-panel > label {
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: #5a3a4a;
-        }
+.jianpu-image-panel > label {
+font-weight: 600;
+font-size: 0.9rem;
+color: #5a3a4a;
+display: flex;
+align-items: center;
+gap: 0.45rem;
+padding-bottom: 0.55rem;
+border-bottom: 1px dashed rgba(176, 58, 107, 0.22);
+}
+.jianpu-image-panel > label::before {
+content: '🖼️';
+font-size: 1.05rem;
+}
+.jianpu-image-panel > label #jianpu-zoom-label {
+margin-left: auto;
+font-size: 0.75rem;
+font-weight: 600;
+color: #b03a6b;
+background: rgba(176, 58, 107, 0.10);
+border: 1px solid rgba(176, 58, 107, 0.22);
+border-radius: 999px;
+padding: 0.1rem 0.6rem;
+letter-spacing: 0.02em;
+}
         .jianpu-import-row {
             display: flex;
             align-items: center;
@@ -291,29 +234,100 @@
         }
         .jianpu-ocr-status.ok { color: #198754; }
         .jianpu-ocr-status.bad { color: #dc3545; }
-        .jianpu-image-view {
-            margin-top: 0.75rem;
-            height: 420px;
-            overflow: auto;
-            border: 1px solid #dee2e6;
-            border-radius: 6px;
-            background: #f8f9fa;
-            cursor: grab;
-        }
-        .jianpu-image-view.dragging { cursor: grabbing; }
-        .jianpu-image-view img {
-            display: block;
-            max-width: none;
-            user-select: none;
-            -webkit-user-drag: none;
-        }
-        .jianpu-zoom-controls {
+.jianpu-image-view {
+margin-top: 0.75rem;
+height: 420px;
+overflow: auto;
+border: 1px solid rgba(176, 58, 107, 0.28);
+border-radius: 12px;
+background:
+linear-gradient(45deg, rgba(176,58,107,0.035) 25%, transparent 25%, transparent 75%, rgba(176,58,107,0.035) 75%),
+linear-gradient(45deg, rgba(176,58,107,0.035) 25%, transparent 25%, transparent 75%, rgba(176,58,107,0.035) 75%),
+#fffdfe;
+background-size: 22px 22px;
+background-position: 0 0, 11px 11px;
+box-shadow: inset 0 2px 10px rgba(60, 20, 40, 0.06);
+cursor: grab;
+scrollbar-width: thin;
+scrollbar-color: rgba(176, 58, 107, 0.45) transparent;
+}
+.jianpu-image-view::-webkit-scrollbar { width: 9px; height: 9px; }
+.jianpu-image-view::-webkit-scrollbar-track { background: transparent; }
+.jianpu-image-view::-webkit-scrollbar-thumb {
+background: rgba(176, 58, 107, 0.35);
+border-radius: 999px;
+border: 2px solid transparent;
+background-clip: padding-box;
+}
+.jianpu-image-view::-webkit-scrollbar-thumb:hover { background: rgba(176, 58, 107, 0.55); background-clip: padding-box; }
+.jianpu-image-view.dragging { cursor: grabbing; }
+.jianpu-image-view img {
+display: block;
+max-width: none;
+user-select: none;
+-webkit-user-drag: none;
+box-shadow: 0 4px 18px rgba(60, 20, 40, 0.14);
+}
+        .jianpu-image-empty {
             display: flex;
+            min-height: 180px;
+            height: 100%;
+            padding: 1.25rem;
+            color: #9a7183;
+            text-align: center;
+            line-height: 1.7;
             align-items: center;
-            gap: 0.5rem;
-            margin-top: 0.6rem;
+            justify-content: center;
         }
-        .jianpu-zoom-controls button { width: 2.4rem; }
+        .jianpu-image-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            margin-top: 0.65rem;
+        }
+        .jianpu-image-meta {
+            min-height: 1.2rem;
+            color: #8a6a78;
+            font-size: 0.78rem;
+        }
+.jianpu-zoom-controls {
+display: flex;
+align-items: center;
+gap: 0.5rem;
+margin-top: 0.7rem;
+padding: 0.5rem 0.65rem;
+background: rgba(255, 255, 255, 0.75);
+border: 1px solid rgba(176, 58, 107, 0.16);
+border-radius: 12px;
+}
+.jianpu-zoom-controls button {
+width: 2.4rem;
+height: 2.4rem;
+padding: 0;
+border-radius: 50%;
+font-size: 1.15rem;
+line-height: 1;
+white-space: nowrap;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+box-shadow: 0 2px 6px rgba(60, 20, 40, 0.12);
+transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.jianpu-zoom-controls button:hover { transform: translateY(-1px); }
+.jianpu-zoom-controls button:active { transform: translateY(0); box-shadow: none; }
+.jianpu-zoom-controls input[type="range"] {
+flex: 1;
+accent-color: #b03a6b;
+cursor: pointer;
+}
+
+        /* SVG 矢量简谱预览容器 */
+        .jianpu-svg-preview { margin-top: 1rem; text-align: center; }
+        .jianpu-svg-preview svg { max-width: 100%; overflow: visible; }
+        .jianpu-svg-preview text { font-family: "Times New Roman", "Songti SC", serif; }
+        .jianpu-svg-preview line, .jianpu-svg-preview path { stroke: #333; }
 
         /* 简谱输入助手按钮工具栏 */
         .jianpu-input-toolbar {
@@ -345,83 +359,6 @@
             font-weight: 600;
         }
 
-        /* 实时富文本简谱预览层：下划线紧贴数字 1 下方 */
-        .jianpu-rich-preview {
-            margin-top: 0.6rem;
-            padding: 0.85rem 1rem 0.95rem;
-            background: linear-gradient(180deg, #fffdfd 0%, #fff8fa 100%);
-            border: 1px solid rgba(176, 58, 107, 0.25);
-            border-radius: 10px;
-            font-family: 'Courier New', 'Consolas', monospace;
-            font-size: 1.25rem;
-            line-height: 2;
-            min-height: 56px;
-            color: #2b2b2b;
-            word-break: break-all;
-            white-space: pre-wrap;
-            box-shadow: inset 0 1px 3px rgba(60, 20, 40, 0.04);
-        }
-        .jianpu-rich-preview:empty::before {
-            content: '⬆ 上方输入或点击按钮，下方实时预览带下划线的简谱 …';
-            color: #b09aa6;
-            font-size: 0.95rem;
-            font-style: italic;
-        }
-        .rp-bar-sep {
-            display: inline-block;
-            color: #b03a6b;
-            font-weight: 700;
-            margin: 0 4px 0 1px;
-        }
-        .rp-note {
-            display: inline-block;
-            padding: 0 1px;
-            position: relative;
-            line-height: 1;
-        }
-        .rp-note.rp-rest { color: #adb5bd; }
-        .rp-note.rp-dotted {
-            padding-right: 10px;
-        }
-        .rp-note.rp-dotted::after {
-            content: '·';
-            font-weight: 700;
-            font-size: 1.3em;
-            margin-left: 2px;
-            vertical-align: 0.18em;
-            color: currentColor;
-        }
-        /* 减时线：紧贴数字 1 下方 */
-        .rp-beam {
-            display: inline-block;
-            white-space: nowrap;
-            position: relative;
-            padding-bottom: 0;
-            line-height: 1;
-        }
-        .rp-beam .rp-note { padding: 0 1px; }
-        /* 八分音符：单条下划线紧贴数字底部 */
-        .rp-beam.rp-eighth {
-            border-bottom: 2.5px solid currentColor;
-            padding-bottom: 1px;
-            margin-bottom: 1px;
-        }
-        /* 十六分音符：双下划线（border 一条 + ::after 第二条） */
-        .rp-beam.rp-sixteenth {
-            border-bottom: 2.5px solid currentColor;
-            padding-bottom: 1px;
-            margin-bottom: 6px;
-        }
-        .rp-beam.rp-sixteenth::after {
-            content: '';
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: -5px;
-            height: 2.5px;
-            background: currentColor;
-            border-radius: 1px;
-        }
     </style>
 </head>
 <body>
@@ -453,7 +390,7 @@
                     <input type="file" id="jianpu-image-file" accept="image/*" hidden>
                     <button class="btn btn-outline-secondary btn-sm" id="jianpu-image-btn">📁 选择简谱图片</button>
                     <button class="btn btn-outline-primary btn-sm" id="jianpu-ocr" disabled>🔍 自动识别为简谱</button>
-                    <span class="jianpu-ocr-status" id="jianpu-ocr-status">也可直接粘贴截图（Ctrl+V）</span>
+                    <span class="jianpu-ocr-status" id="jianpu-ocr-status">选择图片后可预览、识别，或保存到当前歌曲</span>
                 </div>
                 <div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
                     <select id="jianpu-song" class="form-select" style="max-width: 260px;"></select>
@@ -527,23 +464,29 @@
                 </div>
 
                 <textarea id="jianpu-text" spellcheck="false" placeholder="在此输入简谱记号，或选择上方经典曲目..."></textarea>
-                <!-- 实时富文本简谱预览：下划线紧贴数字 1 下方 -->
-                <div class="jianpu-rich-preview" id="jianpu-rich-preview" aria-label="实时简谱预览"></div>
-                <div class="jianpu-actions">
-                    <button class="btn btn-outline-primary" id="jianpu-load">解析曲谱</button>
-                    <button class="btn btn-outline-success btn-sm" id="jianpu-toggle-save">＋ 存为新歌曲到曲库</button>
-                </div>
-                <div class="jianpu-preview" id="jianpu-preview"></div>
+<div class="jianpu-actions">
+<button class="btn btn-outline-primary" id="jianpu-load">解析曲谱</button>
+<button class="btn btn-success btn-sm" id="jianpu-update-btn" title="将编辑后的简谱文本保存回当前选中的歌曲（含内置歌曲）">💾 保存修改到当前歌曲</button>
+<button class="btn btn-outline-success btn-sm" id="jianpu-toggle-save">＋ 存为新歌曲到曲库</button>
+</div>
+                <!-- SVG 矢量简谱预览：唯一的谱面预览（带下划线/高低音点/调号头部） -->
+                <div class="jianpu-svg-preview" id="jianpu-svg-preview" style="margin-top:1rem;"></div>
                 <div class="jianpu-hint">
                     🎵 <b>时值与节拍语法</b>：四分音符直接输入（如 <code>1</code>，1拍）；八分音符加减时线（如 <code>1_</code>、<code>5_</code> 或 <code>1̲</code>，半拍）；十六分音符（如 <code>1__</code>，1/4拍）；附点（如 <code>1.</code> 或 <code>1_.</code>）；<code>-</code> 延音；<code>0</code> 休止；<code>|</code> 分小节；支持 12 半音任意移调弹奏。
                 </div>
             </div>
 
-            <!-- 简谱原图预览（支持缩放与拖动） -->
+            <!-- 当前歌曲的谱图预览：图片数据保存在数据库，可缩放、拖动和替换 -->
             <div class="jianpu-image-panel" id="jianpu-image-panel">
-                <label>简谱原图（当前 <span id="jianpu-zoom-label">100%</span>）</label>
+                <label><span>当前歌曲谱图</span><span id="jianpu-zoom-label">100%</span></label>
                 <div class="jianpu-image-view" id="jianpu-image-view">
-                    <img id="jianpu-image" alt="简谱原图">
+                    <div class="jianpu-image-empty" id="jianpu-image-empty">切换歌曲后将在这里显示已保存的谱图。<br>也可点击左侧「选择简谱图片」后保存到当前歌曲。</div>
+                    <img id="jianpu-image" alt="当前歌曲简谱图片" hidden>
+                </div>
+                <div class="jianpu-image-actions">
+                    <button class="btn btn-outline-primary btn-sm" id="jianpu-save-image-btn" disabled>💾 保存到当前歌曲</button>
+                    <button class="btn btn-outline-danger btn-sm" id="jianpu-remove-image-btn" disabled>🗑 移除谱图</button>
+                    <span class="jianpu-image-meta" id="jianpu-image-meta">图片存于 SQLite 数据库</span>
                 </div>
                 <div class="jianpu-zoom-controls">
                     <button class="btn btn-outline-secondary btn-sm" id="jianpu-zoom-out">－</button>
@@ -626,6 +569,7 @@
     <script src="{{ url_for('static', filename='js/keymapping.js') }}"></script>
     <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/jianpu_training.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/jianpu_svg_render.js') }}"></script>
+<script src="{{ url_for('static', filename='js/jianpu_training.js') }}"></script>
 </body>
 </html>

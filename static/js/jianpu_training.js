@@ -20,7 +20,9 @@
         { id: 15, title: '🎵 时值练习·八分音符', key: 'C', is_builtin: 1, jianpu: '1 2 3 1 1 2 3 1 | 1_ 2_ 3_ 1_ 1_ 2_ 3_ 1_ | 3 4 5 - 3 4 5 - | 3_ 4_ 5_ -_ 3_ 4_ 5_ -_ | 5̇ 6 5̇ 4 3 1 5̇ 6 5̇ 4 3 1 | 5̇_ 6_ 5̇_ 4_ 3_ 1_ 5̇_ 6_ 5̇_ 4_ 3_ 1_ | 2 5 1 - 2 5 1 - | 2_ 5_ 1_ -_ 2_ 5_ 1_ -_' },
         { id: 16, title: '🎵 时值练习·附点四分音符', key: 'C', is_builtin: 1, jianpu: '1. 1 1. 1 | 5 1. 1 1. | 6. 6 5 3 | 2 1 2 - | 3. 2 1. 5 | 6 5 6 1 | 1 - - -' },
         { id: 17, title: '🎵 时值练习·十六分音符', key: 'C', is_builtin: 1, jianpu: '1__ 5__ 5__ 1__ 1__ 5__ 5__ 1__ | 5__ 5__ 6__ 5__ 4__ 3__ 2__ 1__ | 1__ 2__ 3__ 4__ 5__ 6__ 7__ 1̇__ | 1̇__ 1̇__ 1̇__ -__ 1̇__ 1̇__ 1̇__ -__ | 1 1 1 - | 3 3 3 - | 2 2 2 - | 1 - - -' },
-        { id: 18, title: '🎵 时值练习·混合时值', key: 'C', is_builtin: 1, jianpu: '1_ 5_ 6 5 | 3. 5 1 2 | 1__ 2__ 3__ 5__ | 1̇ 6 5 3 | 2_ 1_ -_ 5_ | 6 5 3 - | 1 2 3 5 | 5_ 5_ 5_ 3_ | 1 - - -' }
+        { id: 18, title: '🎵 时值练习·混合时值', key: 'C', is_builtin: 1, jianpu: '1_ 5_ 6 5 | 3. 5 1 2 | 1__ 2__ 3__ 5__ | 1̇ 6 5 3 | 2_ 1_ -_ 5_ | 6 5 3 - | 1 2 3 5 | 5_ 5_ 5_ 3_ | 1 - - -' },
+        { id: 19, title: '匆匆那年（王菲）', key: 'Db', time_signature: '3/4', tempo: 126, is_builtin: 1, jianpu: '3 - 4_3_ | 3. 1_ 2 | 3 2 1 | 2 - - | 1 - 1 | 2. 1_ 2 | 3 - - | 3 - - | 3 - 4_3_ | 3. 1_ 2 | 3 1̇ 7 | 2 - - | 1 - 1 | 2 - 2 | 1̣7̣_ 6̣ - | 6̣ - - | 3_3_ 3_6_ 7_1̇_ | 3_3_ 3_6_ 7_1̇_ | 3_3_ 3_3_ 2_1_ | 6 - - | 1̇_1̇_ 6_7_ 1̇_1̇_ | 2̇_2̇_ 2̇_5̇_ 5̇_5̇_ | 3̇_3̇_ 3̇_2̇_ 1̇ - | 3̇ - - | 3̇_3̇_ 6̇_7̇_ 1̇_1̇_ | 3̇_3̇_ 3̇_2̇_ 1̇ - | 6̇ - - | 1̇_1̇_ 1̇_7_ 6_5_ | 6_6_ 5_4_ 2_4_ | 4_5_ 4_2_ 3_2_ | 3 - - | 2_2_ 1_2_ 2_3_ | 4_2_ 1_3_ 3_2_ | 2_3_ 4_2_ - | 7_7_ 7_6_ 6_5_ | 6_6_ 5_6_ 5_6_ | 7 - - | 3_3_ 3_2_ 1̇_6_ | 1̇_1̇_ 1̇_7_ 6_5_ | 3 - - | 6_5_ 6_7_ 1̇_6_ | 5 - - | 4_5_ 4_3_ 2_1_ | 2_2_ 2_3_ 4_2_ | 3 - - | 1̇_7_ 1̇_7_ 1̇_6_ | 7 - - | 6_5_ 6_5_ 6_1̇_ | 1̇_3̇_ 3̇_4̇_ 3̇_2̇_ | 3̇_2̇_ 3̇_2̇_ 1̇ - | 3̇ - - | 3̇_3̇_ 6̇_7̇_ 1̇_1̇_ | 3̇_3̇_ 3̇_2̇_ 1̇ - | 6̇ - - | 1̇_1̇_ 1̇_7_ 6_5_ | 6_6_ 5_4_ 2_4_ | 4_5_ 4_2_ 3_2_ | 3 - -' },
+        { id: 20, title: '🌟 水星记（郭顶）', key: 'F', time_signature: '4/4', tempo: 67, is_builtin: 1, jianpu: '0 - - - | 0. 5̣_ 3_ 2_ 2__1__ 1_ | 1_ 0._ 5̣__ 3_ 2_ 2__1__ 1_ | 1_ 0._ 5̣__ 3_ 2_ 2__1__ 4_ | 4__ 3__ 0._ 1__ 5_ 3_ 2_ 2__1__. | 1_ 6. 5_ 3_ 2_ 2__1__ 2_ | 2 - 0 0 | 0 - - 0 | 0. 5̣_ 3_ 2_ 2__1__ 1_ | 1_ 0._ 5̣__ 3_ 2_ 2__1__ 1_ | 1_ 0._ 5̣__ 3_ 2_ 2__1__ 4_ | 4__ 3__ 0._ 1__ 5_ 3_ 2_ 2__1__. | 1_ 6. 5_ 3_ 2_ 2__1__ 2_ | 2 - 5_ 3_ 2_ 2__1__ 2_. | 0__ 6̣__5̣__ 5̣ - 0__5̣__ 1_ 2_ | 3. 3_ 3__4__ 3 2 0_ 3_ | 4 3_ 2__2__1__1__ 3_ 3__2__ 2_ | 2 - 2_ 1_ 2_ 1_ | 1 - - - | 0 0 1_ 2_ 3_ 5_ | 6_ 5_ 4_ 6_ 5_ 3_ 6_ | 6 - 6_ 5_ 1̇_ 3_ | 3__2__ 5_ 3_ 2_ 5__3__ | 3 - 1_ 2_ 3_ 5_ | 6_ 5_ 3_ 6_ 5_ 3_ b6 | b6_ 5_ 4_ 4_. 0 1̇ 2̇ 1̇ | 1̇ 5 5_5_3_ 2__1__. | 1 - 1_ 2_ 3_ 1_ | 1̇ 1_. 1_ 2_ 3_ 4_ | 4__3__2__ 2_ 3_ 2_. 1_. | 1 - 0 0 | 0 0 1_ 2_ 3_ 5_ | 6_ 5_ 4_ 6_ 5_ 3_ 6_ | 6 - 6_ 5_ 1̇_ 3_ | 3__2__ 5_ 3_ 2_ 5__3__ | 3 - 1_ 2_ 3_ 5_ | 6_ 5_ 3_ 6_ 5_ 3_ b6 | b6_ 5_ 4_ 4_. 0 1̇ 2̇ 1̇ | 1̇ 5 5_5_1̇ 2̇ 3̇ | 3__2__ 1̇ 1̇ 1̇_ 1̇_ 6_ 5_ | 6_ 5_ 3_ 6_ 5_ 3_ 6_ | 6 - 6_ 5_ 1̇_ 3_ | 3__2__ 5_ 3_ 2__2__1__ | 6 - 1_ 2_ 3_ 1_ | 6̣_ 1̇_. 1_ 2_ 3_ 4__3__ | 2 - 3 2__1__. | 1 - - 0' }
     ];
 
     var JIANPU_LIBRARY = DEFAULT_STATIC_SONGS;
@@ -62,6 +64,7 @@
     var totalCount = 0;
     var songNotes = [];   // 当前曲谱解析结果
     var current = null;   // 当前题：{notes:[{note,octave,midi,src}]}
+    var currentSong = null; // 当前加载歌曲的元数据 {key, tempo, timeSignature, title}
     var answered = false;
     var playing = false;
     var userPicks = [];   // 听唱名的选择
@@ -200,79 +203,17 @@
             setStatus('部分记号无法识别（已忽略），请检查标红记号', 'bad');
         }
         songNotes = notes;
-        renderPreview();
-        renderRichPreview();
+        // 谱面预览只保留 SVG 一份，避免重复显示
+        renderSVGPreview();
         if (notes.allValid || silent) {
             setStatus('曲谱解析成功，共 ' + notes.length + ' 个音符，点击「下一题」开始', 'ok');
         }
         return true;
     }
 
+    // 旧的文本预览已彻底移除（与 SVG 预览重复），统一走 renderSVGPreview
     function renderPreview() {
-        var preview = document.getElementById('jianpu-preview');
-        preview.innerHTML = '';
-        preview.style.display = 'block';
-
-        // 按小节分组展示
-        var bars = [];
-        var cur = null;
-        var curBarText = null;
-        songNotes.forEach(function (note) {
-            if (note.barText !== curBarText) {
-                cur = [];
-                bars.push(cur);
-                curBarText = note.barText;
-            }
-            cur.push(note);
-        });
-
-        function lineTypeOf(note) {
-            if (note.isRest) return 0;
-            if (note.isSixteenth) return 2;
-            if (note.isEighth) return 1;
-            return 0;
-        }
-
-        function makeTok(note, idx) {
-            var tok = document.createElement('span');
-            tok.className = 'jianpu-note-tok';
-            tok.setAttribute('data-note-idx', idx);
-            if (note.isRest) tok.classList.add('rest');
-            if (note.isDotted) tok.classList.add('is-dotted');
-            tok.textContent = noteToToken(note);
-            return tok;
-        }
-
-        var globalIndex = 0;
-        bars.forEach(function (bar) {
-            var barSpan = document.createElement('span');
-            barSpan.className = 'bar';
-            var i = 0;
-            while (i < bar.length) {
-                var note = bar[i];
-                var lt = lineTypeOf(note);
-                // 休止符、四分音符、附点音符单独渲染（不参与 beam）
-                if (lt === 0 || note.isDotted) {
-                    barSpan.appendChild(makeTok(note, globalIndex++));
-                    barSpan.appendChild(document.createTextNode(' '));
-                    i++;
-                    continue;
-                }
-                // 收集连续相同 lineType（且不带附点）的音符，组成 beam
-                var beam = document.createElement('span');
-                beam.className = 'jianpu-beam' + (lt === 2 ? ' beam-double' : ' beam-single');
-                while (i < bar.length) {
-                    var n = bar[i];
-                    if (lineTypeOf(n) !== lt) break;
-                    if (n.isDotted) break;
-                    beam.appendChild(makeTok(n, globalIndex++));
-                    i++;
-                }
-                barSpan.appendChild(beam);
-                barSpan.appendChild(document.createTextNode(' '));
-            }
-            preview.appendChild(barSpan);
-        });
+        renderSVGPreview();
     }
 
     // ===== 出题 =====
@@ -543,7 +484,8 @@
 
     function playAll() {
         var btn = document.getElementById('jianpu-playall');
-        var preview = document.getElementById('jianpu-preview');
+        var preview = document.getElementById('jianpu-svg-preview');
+        var noteEls = function () { return preview.querySelectorAll('text.jp-note'); };
         if (!songNotes.length) {
             setStatus('请先解析曲谱（点击「解析曲谱」）', 'bad');
             return;
@@ -551,13 +493,13 @@
         if (btn.textContent.indexOf('停止') !== -1) { // 正在弹奏 → 停止
             playAllToken += 1;
             btn.textContent = '▶ 弹奏整曲';
-            if (preview) preview.querySelectorAll('.jianpu-note-tok').forEach(function(el) { el.classList.remove('playing'); });
+            if (preview) noteEls().forEach(function(el) { el.classList.remove('playing'); });
             return;
         }
         playAllToken += 1;
         var token = playAllToken;
         btn.textContent = '■ 停止';
-        if (preview) preview.querySelectorAll('.jianpu-note-tok').forEach(function(el) { el.classList.remove('playing'); });
+        if (preview) noteEls().forEach(function(el) { el.classList.remove('playing'); });
 
         var t = 0;
         var bpm = 82; // 默认基准拍速 (约 730ms 每四分音符)
@@ -567,10 +509,10 @@
             var noteDurMs = beats * beatMs;
             setTimeout(function () {
                 if (token !== playAllToken) return;
-                // 更新高亮跳动光标
+                // 更新高亮跳动光标（SVG 里的数字 text）
                 if (preview) {
-                    preview.querySelectorAll('.jianpu-note-tok').forEach(function(el) { el.classList.remove('playing'); });
-                    var currentTok = preview.querySelector('.jianpu-note-tok[data-note-idx="' + idx + '"]');
+                    noteEls().forEach(function(el) { el.classList.remove('playing'); });
+                    var currentTok = preview.querySelector('text.jp-note[data-note-idx="' + idx + '"]');
                     if (currentTok) {
                         currentTok.classList.add('playing');
                     }
@@ -584,23 +526,35 @@
             }, t);
             t += noteDurMs;
         });
-        setTimeout(function () {
-            if (token === playAllToken) {
-                btn.textContent = '▶ 弹奏整曲';
-                if (preview) preview.querySelectorAll('.jianpu-note-tok').forEach(function(el) { el.classList.remove('playing'); });
-            }
-        }, t + 300);
+setTimeout(function () {
+if (token === playAllToken) {
+btn.textContent = '▶ 弹奏整曲';
+if (preview) noteEls().forEach(function(el) { el.classList.remove('playing'); });
+}
+}, t + 300);
     }
 
-    // ===== 简谱图片导入：预览（缩放/拖动）+ OCR 识别 =====
+    // ===== 当前歌曲谱图：本地预览 + SQLite BLOB 保存/替换/删除 =====
     var lastImageFile = null;
     var imageZoom = 100;
+    var SONG_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 
     function setOcrStatus(text, kind) {
         var el = document.getElementById('jianpu-ocr-status');
         el.textContent = text;
         el.classList.remove('ok', 'bad');
         if (kind) el.classList.add(kind);
+    }
+
+    function setImageMeta(text) {
+        var el = document.getElementById('jianpu-image-meta');
+        if (el) el.textContent = text;
+    }
+
+    function getSelectedDatabaseSong() {
+        var select = document.getElementById('jianpu-song');
+        if (!libraryUsesBackend || !select || select.value === 'custom' || String(select.value).indexOf('local_') === 0) return null;
+        return songLibraryList.find(function (song) { return String(song.id) === String(select.value); }) || null;
     }
 
     function applyImageZoom() {
@@ -616,24 +570,124 @@
         applyImageZoom();
     }
 
+    function showImageEmpty(message) {
+        var img = document.getElementById('jianpu-image');
+        var empty = document.getElementById('jianpu-image-empty');
+        img.hidden = true;
+        img.removeAttribute('src');
+        img.style.width = '';
+        empty.hidden = false;
+        empty.innerHTML = message;
+        document.getElementById('jianpu-remove-image-btn').disabled = true;
+    }
+
+    function showImageSource(source, meta) {
+        var img = document.getElementById('jianpu-image');
+        var empty = document.getElementById('jianpu-image-empty');
+        img.onload = function () {
+            img.hidden = false;
+            empty.hidden = true;
+            setImageZoom(100);
+        };
+        img.onerror = function () {
+            showImageEmpty('谱图读取失败，请尝试重新上传。');
+            setImageMeta('图片读取失败');
+        };
+        img.src = source;
+        setImageMeta(meta || '图片存于 SQLite 数据库');
+    }
+
+    function loadSelectedSongImage() {
+        var song = getSelectedDatabaseSong();
+        var saveBtn = document.getElementById('jianpu-save-image-btn');
+        lastImageFile = null;
+        saveBtn.disabled = true;
+        document.getElementById('jianpu-image-file').value = '';
+        if (!song) {
+            showImageEmpty('静态曲库或自定义输入仅支持本地预览。<br>启动 Flask 版本后，选择数据库中的歌曲即可保存图片。');
+            setImageMeta('当前未选择数据库歌曲');
+            return;
+        }
+        if (!song.has_image) {
+            showImageEmpty('这首歌尚未保存谱图。<br>点击左侧「选择简谱图片」后，可保存并在此显示。');
+            setImageMeta('图片存于 SQLite 数据库 · 尚未上传');
+            return;
+        }
+        document.getElementById('jianpu-remove-image-btn').disabled = false;
+        showImageSource('/api/jianpu/songs/' + encodeURIComponent(song.id) + '/image?t=' + Date.now(), '已从 SQLite 数据库加载谱图');
+    }
+
     function setImageFile(file) {
-        if (!file || file.type.indexOf('image') !== 0) {
+        if (!file || file.type.indexOf('image/') !== 0) {
             setOcrStatus('请选择图片文件', 'bad');
             return;
         }
+        if (file.size > SONG_IMAGE_MAX_BYTES) {
+            setOcrStatus('图片不能超过 8 MB', 'bad');
+            return;
+        }
         lastImageFile = file;
-        var reader = new FileReader();
-        reader.onload = function () {
-            var img = document.getElementById('jianpu-image');
-            img.onload = function () {
-                document.getElementById('jianpu-image-panel').style.display = 'block';
-                setImageZoom(100);
-            };
-            img.src = reader.result;
-        };
-        reader.readAsDataURL(file);
+        var song = getSelectedDatabaseSong();
+        document.getElementById('jianpu-save-image-btn').disabled = !song;
         document.getElementById('jianpu-ocr').disabled = false;
-        setOcrStatus('图片已载入，点击「自动识别为简谱」', '');
+        showImageSource(URL.createObjectURL(file), '待保存：' + file.name + '（' + Math.ceil(file.size / 1024) + ' KB）');
+        setOcrStatus(song ? '图片已载入，可识别简谱或保存/替换当前歌曲谱图' : '图片已本地预览；请选择数据库歌曲后才能保存', '');
+    }
+
+    function saveCurrentSongImage() {
+        var song = getSelectedDatabaseSong();
+        var btn = document.getElementById('jianpu-save-image-btn');
+        if (!song) {
+            setOcrStatus('请先选择数据库中的歌曲，再保存谱图', 'bad');
+            return;
+        }
+        if (!lastImageFile) {
+            setOcrStatus('请先选择一张谱图图片', 'bad');
+            return;
+        }
+        btn.disabled = true;
+        btn.textContent = song.has_image ? '替换中…' : '保存中…';
+        var fd = new FormData();
+        fd.append('image', lastImageFile);
+        fetch('/api/jianpu/songs/' + encodeURIComponent(song.id) + '/image', { method: 'PUT', body: fd })
+            .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+            .then(function (result) {
+                if (!result.ok) throw new Error(result.data.error || '保存失败');
+                song.has_image = true;
+                lastImageFile = null;
+                document.getElementById('jianpu-image-file').value = '';
+                btn.textContent = '💾 保存到当前歌曲';
+                btn.disabled = true;
+                document.getElementById('jianpu-remove-image-btn').disabled = false;
+                showImageSource('/api/jianpu/songs/' + encodeURIComponent(song.id) + '/image?t=' + Date.now(), '已保存到 SQLite：' + (result.data.filename || '谱图'));
+                setOcrStatus('已保存当前歌曲谱图；下次打开或切换歌曲时会自动显示', 'ok');
+            })
+            .catch(function (error) {
+                btn.textContent = '💾 保存到当前歌曲';
+                btn.disabled = false;
+                setOcrStatus(error.message || '保存图片失败，请确认正在使用 Flask 版本', 'bad');
+            });
+    }
+
+    function removeCurrentSongImage() {
+        var song = getSelectedDatabaseSong();
+        var btn = document.getElementById('jianpu-remove-image-btn');
+        if (!song || !song.has_image) return;
+        if (!confirm('确定移除「' + song.title + '」的谱图吗？简谱文字不会受影响。')) return;
+        btn.disabled = true;
+        fetch('/api/jianpu/songs/' + encodeURIComponent(song.id) + '/image', { method: 'DELETE' })
+            .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+            .then(function (result) {
+                if (!result.ok) throw new Error(result.data.error || '删除失败');
+                song.has_image = false;
+                showImageEmpty('这首歌尚未保存谱图。<br>选择新图片后可再次上传。');
+                setImageMeta('图片已从 SQLite 数据库移除');
+                setOcrStatus('已移除当前歌曲谱图，简谱文字未受影响', 'ok');
+            })
+            .catch(function (error) {
+                btn.disabled = false;
+                setOcrStatus(error.message || '删除图片失败', 'bad');
+            });
     }
 
     function runOcr() {
@@ -644,9 +698,7 @@
         var fd = new FormData();
         fd.append('image', lastImageFile);
         fetch('/api/ocr_jianpu', { method: 'POST', body: fd })
-            .then(function (resp) {
-                return resp.json().then(function (data) { return { ok: resp.ok, data: data }; });
-            })
+            .then(function (resp) { return resp.json().then(function (data) { return { ok: resp.ok, data: data }; }); })
             .then(function (result) {
                 btn.disabled = false;
                 if (!result.ok) {
@@ -655,7 +707,6 @@
                 }
                 var text = result.data.text || '';
                 var key = result.data.key;
-                // 按识别到的调号自动更新播放调号选择器
                 if (key && KEY_OFFSETS[key] !== undefined) {
                     var playKeySelect = document.getElementById('jianpu-play-key');
                     if (playKeySelect) playKeySelect.value = key;
@@ -675,6 +726,7 @@
         var view = document.getElementById('jianpu-image-view');
         var down = false, sx = 0, sy = 0, sl = 0, st = 0;
         view.addEventListener('pointerdown', function (e) {
+            if (document.getElementById('jianpu-image').hidden) return;
             down = true;
             sx = e.clientX; sy = e.clientY;
             sl = view.scrollLeft; st = view.scrollTop;
@@ -698,19 +750,19 @@
             if (fileInput.files[0]) setImageFile(fileInput.files[0]);
         });
         document.getElementById('jianpu-ocr').addEventListener('click', runOcr);
+        document.getElementById('jianpu-save-image-btn').addEventListener('click', saveCurrentSongImage);
+        document.getElementById('jianpu-remove-image-btn').addEventListener('click', removeCurrentSongImage);
 
-        // 支持直接粘贴截图
         document.addEventListener('paste', function (e) {
             var items = (e.clipboardData || {}).items || [];
             for (var i = 0; i < items.length; i++) {
-                if (items[i].type.indexOf('image') === 0) {
+                if (items[i].type.indexOf('image/') === 0) {
                     setImageFile(items[i].getAsFile());
                     break;
                 }
             }
         });
 
-        // 缩放控制
         document.getElementById('jianpu-zoom').addEventListener('input', function () {
             imageZoom = parseInt(this.value, 10);
             applyImageZoom();
@@ -719,10 +771,12 @@
         document.getElementById('jianpu-zoom-out').addEventListener('click', function () { setImageZoom(imageZoom - 20); });
         document.getElementById('jianpu-zoom-reset').addEventListener('click', function () { setImageZoom(100); });
         enableImagePan();
+        showImageEmpty('切换歌曲后将在这里显示已保存的谱图。<br>也可选择图片后保存到当前歌曲。');
     }
 
     // ===== 简谱曲库（从 SQLite 数据库异步加载并支持增删） =====
     var songLibraryList = [];
+var libraryUsesBackend = false;
 
     // 本地持久化曲库辅助函数（支持在 GitHub Pages 等纯前端静态部署环境下运行）
     function getLocalStorageSongs() {
@@ -748,16 +802,18 @@
                 return res.json();
             })
             .then(function (data) {
-                if (data && data.songs && data.songs.length > 0) {
-                    songLibraryList = data.songs;
-                } else {
+if (data && data.songs && data.songs.length > 0) {
+libraryUsesBackend = true;
+songLibraryList = data.songs;
+} else {
                     fallbackLocalLibrary();
                 }
                 renderLibrarySelect(selectSongId);
             })
-            .catch(function () {
-                // 静态环境（如 GitHub Pages）或无后端环境时的优雅降级
-                fallbackLocalLibrary();
+.catch(function () {
+// 静态环境（如 GitHub Pages）或无后端环境时的优雅降级
+libraryUsesBackend = false;
+fallbackLocalLibrary();
                 renderLibrarySelect(selectSongId);
             });
     }
@@ -822,19 +878,37 @@
     function applySelectedSong() {
         var select = document.getElementById('jianpu-song');
         var delBtn = document.getElementById('jianpu-delete-btn');
+        var updateBtn = document.getElementById('jianpu-update-btn');
         var val = select.value;
 
-        if (val === 'custom') {
-            document.getElementById('jianpu-text').value = '';
-            document.getElementById('jianpu-preview').style.display = 'none';
-            if (delBtn) delBtn.style.display = 'none';
-            setStatus('粘贴或输入你的简谱后，点击「解析曲谱」，亦可存入曲库');
-            return;
+        // 「保存修改到当前歌曲」只在选中曲库歌曲时可用
+        if (updateBtn) {
+            var isLibSong = val !== 'custom' && songLibraryList.some(function (s) { return String(s.id) === val; });
+            updateBtn.style.display = isLibSong ? 'inline-block' : 'none';
         }
+
+if (val === 'custom') {
+document.getElementById('jianpu-text').value = '';
+// 清空 SVG 预览
+var svgPreview = document.getElementById('jianpu-svg-preview');
+if (svgPreview) svgPreview.innerHTML = '';
+currentSong = null;
+if (delBtn) delBtn.style.display = 'none';
+loadSelectedSongImage();
+setStatus('粘贴或输入你的简谱后，点击「解析曲谱」，亦可存入曲库');
+return;
+}
 
         var found = songLibraryList.find(function (s) { return String(s.id) === val; });
         if (found) {
             document.getElementById('jianpu-text').value = found.jianpu;
+            // 记录当前歌曲元数据，供 SVG 预览显示调号/速度
+            currentSong = {
+                key: found.key || 'C',
+                title: found.title || '',
+                time_signature: found.time_signature || '4/4',
+                tempo: found.tempo || null
+            };
             // 自动同步播放调号选择器与八度
             var key = found.key || 'C';
             var playKeySelect = document.getElementById('jianpu-play-key');
@@ -847,17 +921,19 @@
             }
             loadSource(true);
             // 只有自建歌曲才显示删除按钮
-            if (delBtn) {
-                delBtn.style.display = found.is_builtin ? 'none' : 'inline-block';
-            }
-        }
-    }
+if (delBtn) {
+delBtn.style.display = found.is_builtin ? 'none' : 'inline-block';
+}
+loadSelectedSongImage();
+}
+}
 
     // 初始化曲库相关事件（保存、删除、切换）
-    function initLibraryCRUD() {
-        var select = document.getElementById('jianpu-song');
-        var toggleSaveBtn = document.getElementById('jianpu-toggle-save');
-        var saveBar = document.getElementById('jianpu-save-bar');
+function initLibraryCRUD() {
+var select = document.getElementById('jianpu-song');
+var toggleSaveBtn = document.getElementById('jianpu-toggle-save');
+var saveBar = document.getElementById('jianpu-save-bar');
+var updateBtn = document.getElementById('jianpu-update-btn');
         var saveBtn = document.getElementById('jianpu-save-btn');
         var delBtn = document.getElementById('jianpu-delete-btn');
 
@@ -930,6 +1006,66 @@
                         if (saveBar) saveBar.style.display = 'none';
                         document.getElementById('jianpu-custom-title').value = '';
                         loadLibraryFromDB(newId);
+                    });
+            });
+        }
+
+        // 保存修改：将编辑后的简谱写回当前选中的歌曲（内置与自建均可）
+        if (updateBtn) {
+            updateBtn.addEventListener('click', function () {
+                var curId = select.value;
+                var found = songLibraryList.find(function (s) { return String(s.id) === String(curId); });
+                if (!found) {
+                    setStatus('请先从曲库选择一首歌曲再保存修改', 'bad');
+                    return;
+                }
+                var jianpu = (document.getElementById('jianpu-text').value || '').trim();
+                if (!jianpu) {
+                    setStatus('简谱内容不能为空！', 'bad');
+                    return;
+                }
+
+                updateBtn.disabled = true;
+                updateBtn.textContent = '保存中…';
+
+                fetch('/api/jianpu/songs/' + found.id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jianpu: jianpu })
+                })
+                    .then(function (res) {
+                        if (!res.ok) throw new Error('API 不可用');
+                        return res.json();
+                    })
+                    .then(function (data) {
+                        updateBtn.disabled = false;
+                        updateBtn.textContent = '💾 保存修改到当前歌曲';
+                        if (data.error) {
+                            setStatus(data.error, 'bad');
+                            return;
+                        }
+                        // 同步本地列表中的谱面，避免切歌后丢失修改
+                        found.jianpu = jianpu;
+                        setStatus('歌曲「' + found.title + '」的简谱已更新保存！', 'ok');
+                    })
+                    .catch(function () {
+                        updateBtn.disabled = false;
+                        updateBtn.textContent = '💾 保存修改到当前歌曲';
+                        // 无后端时降级到本地存储（仅自建歌曲）
+                        if (String(found.id).indexOf('local_') === 0) {
+                            var customs = getLocalStorageSongs();
+                            var item = customs.find(function (s) { return String(s.id) === String(found.id); });
+                            if (item) {
+                                item.jianpu = jianpu;
+                                setLocalStorageSongs(customs);
+                                found.jianpu = jianpu;
+                                setStatus('已保存修改到本地曲库「' + found.title + '」！', 'ok');
+                            } else {
+                                setStatus('内置歌曲修改需要后端服务支持，无法保存到本地', 'bad');
+                            }
+                        } else {
+                            setStatus('保存失败：后端服务不可用', 'bad');
+                        }
                     });
             });
         }
@@ -1054,81 +1190,42 @@
                 insertAtCursor(textarea, text);
             });
         });
-        // 实时富文本简谱预览
-        textarea.addEventListener('input', renderRichPreview);
-        renderRichPreview();
+        // 实时 SVG 简谱预览（输入时即时重新解析并重绘）
+        textarea.addEventListener('input', function () {
+            var notes = parseJianpu(textarea.value || '');
+            songNotes = notes;
+            renderSVGPreview();
+        });
     }
 
-    // ===== 实时富文本简谱预览：textarea 输入时即时渲染带下划线的简谱 =====
-    function renderRichPreview() {
-        var srcEl = document.getElementById('jianpu-text');
-        var targetEl = document.getElementById('jianpu-rich-preview');
-        if (!srcEl || !targetEl) return;
-
-        var src = srcEl.value || '';
-        var notes = parseJianpu(src);
-
-        targetEl.innerHTML = '';
-        if (!notes.length) return;
-
-        // 按小节分组
-        var bars = [];
-        var cur = null;
-        var curBarText = null;
-        notes.forEach(function (note) {
-            if (note.barText !== curBarText) {
-                cur = [];
-                bars.push(cur);
-                curBarText = note.barText;
-            }
-            cur.push(note);
-        });
-
-        function lineTypeOf(note) {
-            if (note.isRest) return 0;
-            if (note.isSixteenth) return 2;
-            if (note.isEighth) return 1;
-            return 0;
+    // ===== SVG 简谱预览：使用矢量渲染引擎生成高质量简谱 =====
+    function renderSVGPreview() {
+        var container = document.getElementById('jianpu-svg-preview');
+        if (!container) return;
+        if (!window.JianpuSVG) {
+            container.style.display = 'none';
+            return;
         }
+        container.style.display = 'block';
+        container.innerHTML = '';
+        if (!songNotes || !songNotes.length) return;
 
-        function makeRpNote(note) {
-            var span = document.createElement('span');
-            span.className = 'rp-note';
-            if (note.isRest) span.classList.add('rp-rest');
-            if (note.isDotted) span.classList.add('rp-dotted');
-            var text = noteToToken(note);
-            if (note.isDotted) text += '·';
-            span.textContent = text;
-            return span;
+        // 决定拍号：用户当前选择 > 歌曲默认 > 4/4
+        var ts = '4/4';
+        if (currentSong && currentSong.time_signature) ts = currentSong.time_signature;
+        var opts = {
+            timeSignature: ts,
+            barsPerLine: 'auto',
+            showKey: true,
+            showTempo: true,
+            showTitle: true
+            // 不传 beatMarker：默认关闭节拍数字（按用户偏好：上方不放 1/2/3/4）
+        };
+        if (currentSong) {
+            if (currentSong.key) opts.key = currentSong.key;
+            if (currentSong.tempo) opts.tempo = currentSong.tempo;
         }
-
-        bars.forEach(function (bar, barIdx) {
-            if (barIdx > 0) {
-                var sep = document.createElement('span');
-                sep.className = 'rp-bar-sep';
-                sep.textContent = '|';
-                targetEl.appendChild(sep);
-            }
-            var i = 0;
-            while (i < bar.length) {
-                var note = bar[i];
-                var lt = lineTypeOf(note);
-                if (lt === 0 || note.isDotted) {
-                    targetEl.appendChild(makeRpNote(note));
-                    i++;
-                    continue;
-                }
-                var beam = document.createElement('span');
-                beam.className = 'rp-beam ' + (lt === 2 ? 'rp-sixteenth' : 'rp-eighth');
-                while (i < bar.length) {
-                    var n = bar[i];
-                    if (lineTypeOf(n) !== lt) break;
-                    if (n.isDotted) break;
-                    beam.appendChild(makeRpNote(n));
-                    i++;
-                }
-                targetEl.appendChild(beam);
-            }
-        });
+        var svg = window.JianpuSVG.render(songNotes, opts);
+        if (svg) container.appendChild(svg);
     }
 })();
