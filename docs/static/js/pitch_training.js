@@ -117,37 +117,52 @@
         return dir === 'up' ? '↑' : dir === 'down' ? '↓' : '→';
     }
 
+    // 判定走向作答是否正确：逐对比较用户选择与真实方向（纯函数，便于单测）
+    function judgeContour(picks, notes) {
+        const dirs = contourDirections(notes);
+        if (!Array.isArray(picks) || picks.length !== dirs.length) return false;
+        for (let i = 0; i < dirs.length; i++) {
+            if (picks[i] !== dirs[i]) return false;
+        }
+        return true;
+    }
+
+
     function getContourGapMs() {
         const sel = document.getElementById('contour-gap');
         return sel ? parseInt(sel.value, 10) * 1000 : 2000;
     }
 
-    // 按设定间隔依次播放整段旋律
-    function playContourSequence(notes, force) {
+    // 统一停止播放：取消未触发的定时器与正在播放/加载中的音源
+    function stopPlayback() {
+        if (window.audioSystem) window.audioSystem.stopAll();
+        playing = false;
+    }
+
+    // 按设定间隔依次播放整段旋律（定时器统一托管，切题/重听时可整体取消）
+    function playContourSequence(notes) {
         if (!window.audioSystem || !notes || !notes.length) return;
-        if (playing && !force) return;
+        stopPlayback();
         playing = true;
         const gap = getContourGapMs();
         notes.forEach(function (p, i) {
-            setTimeout(function () {
-                audioSystem.playNote(p.note, p.octave, 0.9);
+            window.audioSystem.scheduleTimer(function () {
+                window.audioSystem.playNote(p.note, p.octave, 0.9);
                 if (i === notes.length - 1) {
-                    setTimeout(function () { playing = false; }, 900);
+                    window.audioSystem.scheduleTimer(function () { playing = false; }, 900);
                 }
             }, i * gap);
         });
     }
 
-    function playPair(pair, force) {
+    function playPair(pair) {
         if (!window.audioSystem || !pair) return;
-        if (playing && !force) return;
+        stopPlayback();
         playing = true;
-        audioSystem.playNote(pair.first.note, pair.first.octave, 0.9);
-        setTimeout(function () {
-            audioSystem.playNote(pair.second.note, pair.second.octave, 0.9);
-            setTimeout(function () {
-                playing = false;
-            }, 900);
+        window.audioSystem.playNote(pair.first.note, pair.first.octave, 0.9);
+        window.audioSystem.scheduleTimer(function () {
+            window.audioSystem.playNote(pair.second.note, pair.second.octave, 0.9);
+            window.audioSystem.scheduleTimer(function () { playing = false; }, 900);
         }, 1100);
     }
 
@@ -377,8 +392,8 @@
             replay.className = 'btn btn-sm btn-outline-secondary pitch-review-btn';
             replay.textContent = '重听此题';
             replay.addEventListener('click', function () {
-                if (item.isContour) playContourSequence(item.notes, true);
-                else playPair({ first: item.first, second: item.second }, true);
+                if (item.isContour) playContourSequence(item.notes);
+                else playPair({ first: item.first, second: item.second });
             });
             li.appendChild(text);
             li.appendChild(replay);
@@ -387,6 +402,7 @@
     }
 
     function finishExam() {
+        stopPlayback();
         examActive = false;
         current = null;
         setControlsLocked(false);
@@ -401,6 +417,7 @@
     }
 
     function abortExam() {
+        stopPlayback();
         if (examTimer) {
             clearTimeout(examTimer);
             examTimer = null;
@@ -531,10 +548,7 @@
             }
 
             const dirs = contourDirections(notes); // dirs[i] 对应 notes[i] → notes[i+1]
-            let ok = true;
-            for (let i = 0; i < pairCount; i++) {
-                if (picks[i] !== dirs[i]) { ok = false; break; }
-            }
+            const ok = judgeContour(picks, notes);
 
             // 答题后在按钮上一次性标出正确答案，便于对照
             rows.forEach(function (row, i) {
@@ -715,6 +729,7 @@
             clearTimeout(examTimer);
             examTimer = null;
         }
+        stopPlayback();
         const mode = document.getElementById('pitch-mode').value;
         const difficulty = document.getElementById('pitch-difficulty').value;
         if (mode === 'contour') {
@@ -756,12 +771,13 @@
         document.getElementById('pitch-new').addEventListener('click', onStartClick);
         document.getElementById('pitch-replay').addEventListener('click', function () {
             if (current && replayAllowed()) {
-                if (current.isContour) playContourSequence(current.notes, true);
+                if (current.isContour) playContourSequence(current.notes);
                 else playPair(current);
             }
         });
         document.getElementById('pitch-session').addEventListener('change', updateHint);
         document.getElementById('pitch-mode').addEventListener('change', function () {
+            stopPlayback();
             updateHint();
             if (current && !examActive) {
                 answered = false;

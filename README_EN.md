@@ -1,21 +1,24 @@
-# Sound Training (听音训练)
+# Sight-singing and Ear Training (听音训练)
 
-An interactive music ear training application based on Flask, helping users improve their musical hearing abilities through scientific methods.
+An interactive music ear-training application based on Flask, helping users improve pitch, interval, melodic-contour and jianpu (numbered notation) dictation skills through systematic practice.
+
+## Origin
+
+This project started from [Airyleo/Sight-singing-and-ear-training](https://github.com/Airyleo/Sight-singing-and-ear-training) and is continued/extended in this repository.
 
 ## 🎯 Project Introduction
 
-This project aims to help music enthusiasts, students, and professional musicians improve their ear training abilities through systematic training, from "approximately accurate" to precise pitch recognition, and even developing absolute pitch.
-Currently, all natural major scale ear training has been completed, and the author will continue to improve other professional training needs in the future.
-
-### Core Philosophy
 - Music is not just heard, it's deconstructed
 - Your ears can be as precise as your eyes
-- Between 'approximately accurate' and absolute pitch, there's only one scientific method
+- Between "approximately accurate" and absolute pitch, there is only one scientific method
 
 ## ✨ Features
 
 ### Training Modes
-- **Natural Major Scale Training**: Focus on pitch recognition of natural major scales
+- **Natural major scale training**: pitch recognition of natural major scales
+- **Pitch training**: single-note/interval comparison, whole/half-step judgement, octave direction, melodic contour (pair-by-pair ↑ / → / ↓)
+- **Jianpu dictation**: built-in song library + custom import, with "contour / solfège / full dictation" difficulty levels
+- **Free practice · Piano simulator**: 88-key piano for free playing and listening
 
 ### Page Preview
 
@@ -27,21 +30,21 @@ Currently, all natural major scale ear training has been completed, and the auth
 
 ### Technical Features
 - Interactive piano interface
-- High-quality audio samples
-- Responsive design, supporting multiple device access
-- Intuitive user interface
+- High-quality piano samples (full 88 keys) with automatic fallback to synthesized tone
+- Transposition to any key plus octave up/down playback
+- SVG-based jianpu rendering
+- Responsive design for multiple devices
 
 ## 🛠️ Technology Stack
 
 ### Backend
 - Python 3.x
-- Flask 2.0.0+
+- Flask 3.x (see `requirements.txt`)
+- SQLite (user song library)
 
 ### Frontend
-- HTML5
-- CSS3
-- JavaScript
-- Bootstrap 5.3.0
+- HTML5 / CSS3 / JavaScript
+- Bootstrap 5.3.0 (local static files first, CDN as fallback)
 
 ### Audio Resources
 - High-quality piano audio samples
@@ -51,93 +54,129 @@ Currently, all natural major scale ear training has been completed, and the auth
 
 ### One-Click Launch (Recommended)
 
-Double-click **`一键启动.bat`** in the project root directory. The script will automatically:
-1. Check Python environment
-2. Install project dependencies
+- **Windows**: double-click `一键启动.bat` in the project root
+- **macOS / Linux**: run `./start.sh`
+
+The script will:
+1. Check the Python environment
+2. Create a virtualenv and install/update dependencies (also re-installs when `requirements.txt` changes)
 3. Start the Flask server
-4. Open the browser to the training page
+4. Open the browser
 
 ### Manual Setup
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/sound_training.git
-   cd sound_training
+   git clone https://github.com/Jianglllri/Sight-singing-and-ear-training.git
+   cd Sight-singing-and-ear-training
    ```
 
 2. **Install dependencies**
    ```bash
-   pip install -r requirements.txt
+   python3 -m venv .venv
+   ./.venv/bin/pip install -r requirements.txt
    ```
 
 3. **Run the application**
    ```bash
-   python app.py
+   ./.venv/bin/python app.py
    ```
 
 4. **Access the application**
    Open your browser and visit http://127.0.0.1:5000
 
+### Environment Variables
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `FLASK_HOST` | `127.0.0.1` | Bind address; set `0.0.0.0` to expose |
+| `FLASK_PORT` | `5000` | Listening port |
+| `FLASK_DEBUG` | `0` | Debug mode; **keep it off in production** |
+| `JIANPU_DB_PATH` | `instance/jianpu_library.db` | Custom SQLite database path |
+
+### Public Deployment and Authentication
+
+The application is designed for single-user / intranet scenarios and intentionally does **not** implement application-level write authentication (to avoid embedding secrets in the frontend).
+If you expose it publicly, terminate authentication at a reverse proxy. For example, Nginx Basic Auth:
+
+```nginx
+location / {
+    auth_basic "Sound Training";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+    proxy_pass http://127.0.0.1:5000;
+}
+```
+
+You may also use OAuth, a VPN, or an IP allow-list. Run the app with a production WSGI server (Gunicorn/Waitress) instead of the Flask dev server.
+
 ## 📁 Project Structure
 
 ```
-sound_training/
-├── 一键启动.bat            # One-click launch script (recommended)
-├── app.py                 # Flask application main file
-├── requirements.txt       # Project dependencies
-├── README.md              # Project documentation
-├── static/                # Static files
-│   ├── audio/             # Audio files
-│   │   ├── piano/         # Piano audio samples
-│   │   └── voice/         # Solfege voice recordings
-│   ├── css/               # CSS style files
-│   ├── js/                # JavaScript files
-│   └── images/            # Image resources
-└── templates/             # HTML template files
-    ├── index.html         # Homepage
-    ├── c_major_scale.html # Natural major scale training page
-    ├── natural_scale_training.html # Natural scale training page
-    ├── free_training.html # Free training page
-    └── piano_test.html    # Piano test page
+Sight-singing-and-ear-training/
+├── app.py                     # Flask app (pages + song library / OCR API)
+├── songs.json                 # Single source of truth for built-in songs
+├── requirements.txt           # Runtime dependencies
+├── start.sh                   # macOS / Linux launcher
+├── 一键启动.bat                # Windows launcher
+├── tools/
+│   └── build_assets.py        # Generates frontend data from songs.json and syncs docs/
+├── static/                    # Source static assets (used by Flask)
+│   ├── audio/piano/           # Piano samples
+│   ├── audio/voice/           # Solfège voice recordings
+│   ├── vendor/bootstrap/      # Local Bootstrap
+│   ├── css/  js/  images/  screenshots/
+├── templates/                 # Jinja2 templates (used by Flask)
+│   ├── index.html
+│   ├── c_major_scale.html
+│   ├── pitch_training.html
+│   ├── jianpu_training.html
+│   └── piano_simulator.html
+├── docs/                      # GitHub Pages static site (generated, do not edit)
+└── instance/                  # Runtime SQLite database (gitignored)
 ```
+
+## 🎼 Song Data and Static Site Build
+
+- Built-in songs use **`songs.json` as the single source of truth**: the backend seeds the database from it, and `static/js/builtin_songs.js` is generated from it as well.
+- After editing songs, run the build script to sync the frontend data and `docs/`:
+
+  ```bash
+  python3 tools/build_assets.py          # generate + sync
+  python3 tools/build_assets.py --check  # check only (used by CI)
+  ```
+
+- `docs/` is generated from `templates/` and `static/`; do not maintain both by hand.
+- Built-in songs are **read-only**: editing one in the UI saves a copy ("Save as copy") instead of overwriting the built-in entry; your changes also survive restarts.
+- Built-in songs ship with static score images (`static_image` in `songs.json`) which the API returns directly; images are stored in SQLite only when you **manually upload** one for a custom song.
+- Built-in songs are migrated by `source_id`: when you change a built-in song's notation/tempo/key in `songs.json`, existing databases are updated on next start (titles are never rewritten, so no duplicates are created).
 
 ## 🎵 Audio Resources
 
-The project includes complete 88-key piano audio samples, covering:
-- Basic pitches (C, D, E, F, G, A, B)
-- Sharps and flats (# and b)
-- Different octaves
+The project includes complete 88-key piano audio samples covering basic pitches, accidentals, and multiple octaves.
 
 ## 📄 License
 
 This project is licensed under the **CC BY-NC 4.0 License** (Creative Commons Attribution-NonCommercial 4.0 International License).
 
-### License Terms
-- ✅ **Allowed**: Personal use, educational purposes, non-commercial projects, modification and distribution
-- ❌ **Prohibited**: Commercial use
-- ⚠️ **Required**: Must attribute the original author
+- ✅ **Allowed**: personal use, education, non-commercial projects, modification and distribution
+- ❌ **Prohibited**: commercial use
+- ⚠️ **Required**: attribution to the original author
 
-### Detailed Information
-Please refer to the [CC BY-NC 4.0 License](https://creativecommons.org/licenses/by-nc/4.0/) for complete terms.
+See the [CC BY-NC 4.0 License](https://creativecommons.org/licenses/by-nc/4.0/) for details.
 
 ## 🤝 Contribution
 
-Welcome to submit Issues and Pull Requests to help improve this project!
+Issues and pull requests are welcome.
 
-### Contribution Guide
 1. Fork this repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📞 Contact
-
-If you have any questions or suggestions, please feel free to contact:
-
 ## 🙏 Acknowledgments
 
-- Audio samples: Thanks to contributors who provided high-quality piano audio, all open source projects used are displayed on the website
+- Audio samples: thanks to the contributors who provided high-quality piano audio
 - Design inspiration: @Photo by weston m on Unsplash
 - Background image: @Photo by Wes Hicks on Unsplash
 

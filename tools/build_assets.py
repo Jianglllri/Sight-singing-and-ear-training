@@ -12,6 +12,7 @@
   python3 tools/build_assets.py --full     # 强制重拷所有素材（含音频）
 """
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -25,8 +26,6 @@ TEMPLATES_DIR = os.path.join(ROOT, 'templates')
 
 # 同步到 docs/static 的子目录
 SYNC_SUBDIRS = ['js', 'css', 'images', 'screenshots', 'audio', 'vendor']
-# 体积较大的目录：默认仅在缺失或大小变化时按大小比较
-LARGE_SUBDIRS = {'audio'}
 
 GENERATED_HEADER = (
     '// 本文件由 tools/build_assets.py 从 songs.json 自动生成，请勿手工修改。\n'
@@ -72,19 +71,24 @@ def write_text(path, text, check, changed):
     changed.append(path)
 
 
-def sync_file(src, dst, check, changed, large=False, force=False):
-    if force or not os.path.exists(dst):
-        pass
-    else:
-        src_size = os.path.getsize(src)
-        dst_size = os.path.getsize(dst)
-        if large:
-            if src_size == dst_size:
-                return
-        else:
-            with open(src, 'rb') as a, open(dst, 'rb') as b:
-                if a.read() == b.read():
-                    return
+def file_sha1(path, chunk_size=1 << 20):
+    digest = hashlib.sha1()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(chunk_size), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def files_equal(a, b):
+    """按内容比较（含体积与 sha1），避免“同大小不同内容”被漏判。"""
+    if os.path.getsize(a) != os.path.getsize(b):
+        return False
+    return file_sha1(a) == file_sha1(b)
+
+
+def sync_file(src, dst, check, changed, force=False):
+    if not force and os.path.exists(dst) and files_equal(src, dst):
+        return
     if check:
         changed.append(dst)
         return
@@ -92,6 +96,41 @@ def sync_file(src, dst, check, changed, large=False, force=False):
     with open(src, 'rb') as a, open(dst, 'wb') as b:
         b.write(a.read())
     changed.append(dst)
+
+
+def prune(check, changed):
+    """删除 docs/ 中源文件已不存在的产物（含已删除的音频与模板）。
+
+    只清理 SYNC_SUBDIRS 下的文件与 docs/*.html，保持 docs/ 与源严格一致。
+    """
+    docs_static = os.path.join(DOCS_DIR, 'static')
+    for sub in SYNC_SUBDIRS:
+        dst_root = os.path.join(docs_static, sub)
+        if not os.path.isdir(dst_root):
+            continue
+        for dirpath, _dirnames, filenames in os.walk(dst_root):
+            for name in filenames:
+                dst = os.path.join(dirpath, name)
+                rel = os.path.relpath(dst, docs_static)
+                src = os.path.join(STATIC_DIR, rel)
+                if os.path.exists(src):
+                    continue
+                if check:
+                    changed.append(dst)
+                else:
+                    os.remove(dst)
+                    changed.append(dst)
+
+    valid_templates = {n for n in os.listdir(TEMPLATES_DIR) if n.endswith('.html')}
+    for name in os.listdir(DOCS_DIR):
+        if not name.endswith('.html') or name in valid_templates:
+            continue
+        path = os.path.join(DOCS_DIR, name)
+        if check:
+            changed.append(path)
+        else:
+            os.remove(path)
+            changed.append(path)
 
 
 def build(check=False, force=False):
@@ -113,8 +152,7 @@ def build(check=False, force=False):
                 src = os.path.join(dirpath, name)
                 rel = os.path.relpath(src, STATIC_DIR)
                 dst = os.path.join(DOCS_DIR, 'static', rel)
-                sync_file(src, dst, check, changed,
-                          large=(sub in LARGE_SUBDIRS), force=force)
+                sync_file(src, dst, check, changed, force=force)
 
     # 3. 模板 -> 静态 HTML
     for name in sorted(os.listdir(TEMPLATES_DIR)):
@@ -123,6 +161,9 @@ def build(check=False, force=False):
         with open(os.path.join(TEMPLATES_DIR, name), encoding='utf-8') as f:
             html = render_docs_html(f.read())
         write_text(os.path.join(DOCS_DIR, name), html, check, changed)
+
+    # 4. 清理源文件已删除的产物
+    prune(check, changed)
 
     return changed
 

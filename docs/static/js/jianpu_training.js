@@ -126,12 +126,20 @@
             bar = bar.replace(/(?<=[0-7|\-\s])[oO](?=[0-7|\-\s]|$)/g, '0');
             bar = bar.replace(/^[oO](?=[0-7|\-\s]|$)/g, '0');
 
-            // 按音符记号切分：升降号 + 数字 + 高低音点 + 可选减时线(_ / \u0332 / \) + 可选附点 .，以及延音线「-」
-            var tokens = bar.match(/(?:[#b]?[0-7][\u0307'\u0323,._\u0332\\]*)|-/g) || [];
+            // 按音符记号切分：升降号 + 数字 + 高低音点 + 可选减时线(_ / \u0332 / \) + 可选附点 .，
+            // 以及延音线「-」（可带减时线，如 -_ 表示半拍延音）
+            var TOKEN_RE = /(?:[#b]?[0-7][\u0307'\u0323,._\u0332\\]*)|(?:-[\u0332_]*\.?)/g;
+            var tokens = bar.match(TOKEN_RE) || [];
             tokens.forEach(function (token) {
-                if (token === '-') {
+                if (token.charAt(0) === '-') {
+                    // 延音时值：- = 1 拍，-_ = 0.5 拍，-__ = 0.25 拍；带附点再 ×1.5
+                    var ext = 1.0;
+                    var underlines = (token.match(/[_\\\u0332]/g) || []).length;
+                    if (underlines === 1) ext = 0.5;
+                    else if (underlines >= 2) ext = 0.25;
+                    if (token.indexOf('.') !== -1) ext *= 1.5;
                     var last = result[result.length - 1];
-                    if (last) last.beats += 1;
+                    if (last) last.beats += ext;
                     return;
                 }
                 var note = parseJianpuToken(token);
@@ -143,6 +151,10 @@
                     ok = false;
                 }
             });
+
+            // 检测无法识别的残留字符（如 “1 xyz 2” 中的 xyz），避免非法内容被静默忽略
+            var leftover = bar.replace(TOKEN_RE, '').replace(/[\s|]/g, '');
+            if (leftover) ok = false;
         });
         result.allValid = ok;
         return result;
@@ -640,9 +652,10 @@ return songLibraryList.find(function (song) { return String(song.id) === String(
             setImageMeta('图片存于 SQLite 数据库 · 尚未上传');
             return;
         }
-        // 静态部署环境（如 GitHub Pages）：无后端，改从内置静态谱图文件加载
+        var removeBtn = document.getElementById('jianpu-remove-image-btn');
+        // 静态部署环境（如 GitHub Pages）：无后端，只能用内置静态谱图
         if (!libraryUsesBackend) {
-            document.getElementById('jianpu-remove-image-btn').disabled = true;
+            removeBtn.disabled = true;
             if (song.static_image) {
                 showImageSource('static/images/scores/' + song.static_image, '内置静态谱图（保存/替换需启动 Flask 版本）');
             } else {
@@ -651,8 +664,19 @@ return songLibraryList.find(function (song) { return String(song.id) === String(
             }
             return;
         }
-        document.getElementById('jianpu-remove-image-btn').disabled = false;
-        showImageSource('/api/jianpu/songs/' + encodeURIComponent(song.id) + '/image?t=' + Date.now(), '已从 SQLite 数据库加载谱图');
+        // 后端模式：优先使用 SQLite 中保存的谱图，否则回退到内置静态谱图
+        if (song.has_image) {
+            removeBtn.disabled = false;
+            showImageSource('/api/jianpu/songs/' + encodeURIComponent(song.id) + '/image?t=' + Date.now(), '已从 SQLite 数据库加载谱图');
+            return;
+        }
+        removeBtn.disabled = true;
+        if (song.static_image) {
+            showImageSource('static/images/scores/' + song.static_image, '内置静态谱图（上传图片可覆盖为自定义谱图）');
+        } else {
+            showImageEmpty('这首歌尚未保存谱图。<br>点击左侧「选择简谱图片」后，可保存并在此显示。');
+            setImageMeta('图片存于 SQLite 数据库 · 尚未上传');
+        }
     }
 
     function setImageFile(file) {
@@ -842,12 +866,30 @@ var libraryUsesBackend = false;
     }
 
     // 把一首歌写入浏览器本地曲库（仅静态部署/网络异常时使用），返回新 id
-    function saveLocalCopy(title, jianpu, key) {
+    function saveLocalCopy(title, jianpu, key, meta) {
         var customs = getLocalStorageSongs();
         var newId = 'local_' + Date.now();
-        customs.push({ id: newId, title: title, jianpu: jianpu, key: key || 'C', is_builtin: 0 });
+        var song = { id: newId, title: title, jianpu: jianpu, key: key || 'C', is_builtin: 0 };
+        if (meta) {
+            if (meta.time_signature) song.time_signature = meta.time_signature;
+            if (meta.tempo) song.tempo = meta.tempo;
+        }
+        customs.push(song);
         setLocalStorageSongs(customs);
         return newId;
+    }
+
+    // 根据曲库来源与曲目类型决定“保存修改”的行为（纯函数，便于单测）
+    //  local-update：更新浏览器本地自建曲目
+    //  local-copy  ：把内置曲目另存为浏览器本地副本（静态部署）
+    //  server-put  ：更新服务器上的自建曲目
+    //  server-copy ：把内置曲目另存为服务器上的自建副本
+    function resolveSaveAction(song, usesBackend) {
+        if (!song) return null;
+        var isLocal = String(song.id).indexOf('local_') === 0;
+        if (isLocal) return 'local-update';
+        if (!usesBackend) return song.is_builtin ? 'local-copy' : 'local-update';
+        return song.is_builtin ? 'server-copy' : 'server-put';
     }
 
     // 从后端错误响应中提取可展示的错误信息
@@ -1115,15 +1157,24 @@ var updateBtn = document.getElementById('jianpu-update-btn');
                     return;
                 }
 
-                var isBuiltin = !!found.is_builtin;
-                var isLocalSong = String(found.id).indexOf('local_') === 0;
+                var action = resolveSaveAction(found, libraryUsesBackend);
 
-                // 本地曲库（静态部署）：直接写 localStorage
-                if (isLocalSong || !libraryUsesBackend) {
+                // 本地曲库（静态部署）：写 localStorage；内置曲目则新建本地副本
+                if (action === 'local-update' || action === 'local-copy') {
+                    var meta = { time_signature: found.time_signature, tempo: found.tempo };
+                    if (action === 'local-copy') {
+                        var copyTitle = (found.title || '未命名') + '（副本）';
+                        var copyId = saveLocalCopy(copyTitle, jianpu, found.key || 'C', meta);
+                        setStatus('内置曲目为只读（静态部署），已另存为本地副本「' + copyTitle + '」', 'ok');
+                        loadLibraryFromDB(copyId);
+                        return;
+                    }
                     var customs = getLocalStorageSongs();
                     var item = customs.find(function (s) { return String(s.id) === String(found.id); });
                     if (item) {
                         item.jianpu = jianpu;
+                        if (found.time_signature) item.time_signature = found.time_signature;
+                        if (found.tempo) item.tempo = found.tempo;
                         setLocalStorageSongs(customs);
                         found.jianpu = jianpu;
                         setStatus('已保存修改到浏览器本地曲库「' + found.title + '」！', 'ok');
@@ -1133,21 +1184,30 @@ var updateBtn = document.getElementById('jianpu-update-btn');
                     return;
                 }
 
+                // 服务器保存：内置 -> 另存副本；自建 -> PUT（携带完整元数据，避免调号/拍号/速度被重置）
+                var isBuiltin = action === 'server-copy';
                 updateBtn.disabled = true;
                 updateBtn.textContent = isBuiltin ? '另存中…' : '保存中…';
 
-                // 内置曲目只读：改为新建一份自建副本；自建曲目直接 PUT
                 var endpoint = isBuiltin ? '/api/jianpu/songs' : ('/api/jianpu/songs/' + found.id);
                 var method = isBuiltin ? 'POST' : 'PUT';
-                var payload = isBuiltin
-                    ? {
+                var payload;
+                if (isBuiltin) {
+                    payload = {
                         title: (found.title || '未命名') + '（副本）',
                         jianpu: jianpu,
                         key: found.key || 'C',
                         time_signature: found.time_signature || '4/4',
                         tempo: found.tempo || null
-                    }
-                    : { jianpu: jianpu };
+                    };
+                } else {
+                    payload = {
+                        jianpu: jianpu,
+                        key: found.key || 'C',
+                        time_signature: found.time_signature || '4/4',
+                        tempo: found.tempo || null
+                    };
+                }
 
                 fetch(endpoint, {
                     method: method,

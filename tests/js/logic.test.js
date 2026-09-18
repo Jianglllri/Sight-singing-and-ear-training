@@ -1,9 +1,9 @@
 /**
  * 前端音乐逻辑的单测（无需浏览器）：
- *  - keymapping.js 等音映射（问题14）
- *  - audio.js 时值/回退/停止（问题1、2、3）
- *  - jianpu_training.js 简谱解析、小节唯一标识、休止符分段（问题9、10、11）
- *  - pitch_training.js 旋律走向与八度题（问题7、8）
+ *  - keymapping.js 等音映射
+ *  - audio.js 时值/回退/停止/异步竞态/移动端 resume
+ *  - jianpu_training.js 简谱解析、延音时值、非法字符、小节唯一标识、休止符分段、保存动作
+ *  - pitch_training.js 旋律走向判分与八度题
  *
  * 运行：node tests/js/logic.test.js
  */
@@ -54,6 +54,8 @@ function runInSandbox(code, sandbox) {
     vm.runInContext(code, sandbox);
 }
 
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 // ---------------------------------------------------------------- keymapping
 function testKeyMapping() {
     const windowObj = {};
@@ -87,11 +89,13 @@ function testKeyMapping() {
 async function testAudio() {
     const created = { oscillators: [], bufferSources: [] };
     let now = 0;
+    let resumeCalls = 0;
     let decodeImpl = () => Promise.reject(new Error('decode fail'));
     let fetchImpl = () => Promise.reject(new Error('404'));
 
     const ctx = {
-        sampleRate: 44100, destination: {},
+        sampleRate: 44100, destination: {}, state: 'suspended',
+        resume() { resumeCalls++; ctx.state = 'running'; return Promise.resolve(); },
         get currentTime() { return now; },
         createGain() {
             return {
@@ -126,14 +130,21 @@ async function testAudio() {
         console, Promise, Math, Number, Float32Array, ArrayBuffer
     });
     const audio = windowObj.audioSystem;
-    const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+    // 1. 移动端：suspended 状态下播放前会 resume()
+    created.oscillators = [];
+    audio.playFrequency(440, 0.2);
+    check('audio：suspended 状态下播放会 resume()', resumeCalls >= 1 && ctx.state === 'running',
+        'resumeCalls=' + resumeCalls + ' state=' + ctx.state);
+
+    // 2. 采样失败只回退一次，且时值受 duration 控制
     created.oscillators = [];
     audio.playNote('C', 4, 0.5);
     await sleep(20);
     check('audio：采样失败只回退一次合成音', created.oscillators.length === 1, 'osc=' + created.oscillators.length);
     const osc = created.oscillators[0];
-    check('audio：时值受 duration 控制（非 6 秒）', (osc._stop - osc._start) < 1.0 && (osc._stop - osc._start) >= 0.5,
+    check('audio：时值受 duration 控制（非 6 秒）',
+        (osc._stop - osc._start) < 1.0 && (osc._stop - osc._start) >= 0.5,
         'len=' + (osc._stop - osc._start).toFixed(3));
 
     created.oscillators = [];
@@ -144,6 +155,7 @@ async function testAudio() {
     check('audio：短音 < 长音且分别接近 duration', shortLen < longLen && shortLen < 0.4 && longLen >= 2.0,
         shortLen.toFixed(3) + ' vs ' + longLen.toFixed(3));
 
+    // 3. 采样成功后 stopAll 能停掉 buffer source
     fetchImpl = () => Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)) });
     decodeImpl = () => Promise.resolve({ duration: 3, length: 3, sampleRate: 44100 });
     created.bufferSources = [];
@@ -154,6 +166,20 @@ async function testAudio() {
     audio.stopAll();
     check('audio：stopAll 停掉采样音源', src._stopped === true);
 
+    // 4. 异步竞态：加载/解码期间 stopAll 后，旧音符不得再发声
+    let resolveDecode = null;
+    decodeImpl = () => new Promise(resolve => { resolveDecode = resolve; });
+    created.bufferSources = [];
+    audio.playNote('E', 4, 0.5);
+    await sleep(10);              // 此刻 fetch 已完成，await 停在 decode 上
+    audio.stopAll();              // 加载期间点击停止
+    if (resolveDecode) resolveDecode({ duration: 3, length: 3, sampleRate: 44100 });
+    await sleep(20);
+    check('audio：加载期间 stopAll 后旧音符不再发声',
+        created.bufferSources.length === 0 && !!resolveDecode,
+        'src=' + created.bufferSources.length);
+
+    // 5. stopAll 清除未触发的定时器
     let timerFired = false;
     audio.scheduleTimer(() => { timerFired = true; }, 30);
     audio.stopAll();
@@ -167,7 +193,8 @@ function testJianpu() {
     code = code.replace(/\}\)\(\);\s*$/, `
 globalThis.__api = {
   loadSource: loadSource, pickSegment: pickSegment,
-  buildPlayableRuns: buildPlayableRuns, getSongNotes: function () { return songNotes; }
+  buildPlayableRuns: buildPlayableRuns, resolveSaveAction: resolveSaveAction,
+  getSongNotes: function () { return songNotes; }
 };
 })();`);
 
@@ -183,6 +210,7 @@ globalThis.__api = {
     const load = text => { documentMock.els['jianpu-text'] = makeEl({ value: text }); api.loadSource(true); return api.getSongNotes(); };
     const setLen = v => { documentMock.els['jianpu-length'] = makeEl({ value: v }); };
 
+    // 小节唯一标识
     const notes = load('1 2 3 4 | 1 2 3 4 | 5 6 7 1̇');
     const idxs = Array.from(new Set(notes.map(n => n.barIndex)));
     check('jianpu：相同小节文本获得不同 barIndex', idxs.length === 3, JSON.stringify(idxs));
@@ -200,31 +228,55 @@ globalThis.__api = {
     check('jianpu：抽取小节不合并相同文本小节', maxLen === 4, 'maxLen=' + maxLen);
     check('jianpu：两个相同小节都能被抽到', seen.size >= 2);
 
+    // 休止符分段与不跨越拼接
     load('1 2 3 0 4 5');
     const runs = api.buildPlayableRuns();
     check('jianpu：按休止符切分为 2 个连续片段', runs.length === 2);
-
     setLen('2');
     let bridged = 0;
     for (let i = 0; i < 200; i++) {
-        const seq = api.pickSegment().map(n => n.degree).join(',');
-        if (seq === '3,4') bridged++;
+        if (api.pickSegment().map(n => n.degree).join(',') === '3,4') bridged++;
     }
     check('jianpu：抽取时不跨休止符拼接', bridged === 0, 'bridged=' + bridged);
 
+    // 小节时间轴保留休止符、答案剔除休止符
     load('1 0 2 3');
     setLen('bar');
     const seg = api.pickSegment();
     const total = seg.reduce((s, n) => s + n.beats, 0);
     check('jianpu：小节时间轴保留休止符、答案剔除休止符',
         seg.length === 4 && Math.abs(total - 4) < 1e-6 && seg.filter(n => !n.isRest).length === 3);
+
+    // 延音时值 -_ / -__
+    const ext = load('1 -_ 2 -__ 3');
+    check('jianpu：-_ 延音增加 0.5 拍', Math.abs(ext[0].beats - 1.5) < 1e-6, 'beats=' + ext[0].beats);
+    check('jianpu：-__ 延音增加 0.25 拍', Math.abs(ext[1].beats - 1.25) < 1e-6, 'beats=' + ext[1].beats);
+    check('jianpu：- 延音保持 1 拍（- - 累加为 3 拍）',
+        Math.abs(load('1 - -')[0].beats - 3) < 1e-6);
+
+    // 非法字符
+    check('jianpu：合法简谱 allValid 为 true', load('1 2 3 5 6').allValid === true);
+    check('jianpu：非法字符（1 xyz 2）使 allValid 为 false', load('1 xyz 2').allValid === false);
+
+    // 保存动作（含静态部署下内置曲目另存为副本）
+    check('jianpu：内置曲目 + 后端 -> server-copy',
+        api.resolveSaveAction({ id: 1, is_builtin: 1 }, true) === 'server-copy');
+    check('jianpu：自建曲目 + 后端 -> server-put',
+        api.resolveSaveAction({ id: 9, is_builtin: 0 }, true) === 'server-put');
+    check('jianpu：内置曲目 + 静态部署 -> local-copy',
+        api.resolveSaveAction({ id: 1, is_builtin: 1 }, false) === 'local-copy');
+    check('jianpu：本地曲目 -> local-update',
+        api.resolveSaveAction({ id: 'local_1', is_builtin: 0 }, true) === 'local-update');
 }
 
 // ------------------------------------------------------------ pitch_training
 function testPitch() {
     let code = read('static/js/pitch_training.js');
     code = code.replace(/\}\)\(\);\s*$/, `
-globalThis.__api = { pickContour: pickContour, contourDirections: contourDirections, pickPair: pickPair };
+globalThis.__api = {
+  pickContour: pickContour, contourDirections: contourDirections,
+  judgeContour: judgeContour, pickPair: pickPair
+};
 })();`);
 
     const sandbox = {
@@ -234,19 +286,31 @@ globalThis.__api = { pickContour: pickContour, contourDirections: contourDirecti
     runInSandbox(code, sandbox);
     const api = sandbox.__api;
 
-    let bad = 0, unsolvable = 0;
+    let bad = 0;
     for (const diff of ['easy', 'medium', 'hard']) {
         for (let i = 0; i < 300; i++) {
             const notes = api.pickContour(diff);
             const dirs = api.contourDirections(notes);
             if (dirs.length !== notes.length - 1) bad++;
             if (!dirs.every(d => d === 'up' || d === 'down' || d === 'flat')) bad++;
-            // 按真实方向逐对作答必然全对：题目一定有解
-            if (!dirs.every(d => d === d)) unsolvable++;
         }
     }
     check('pitch：走向答案数量=音数-1 且取值合法', bad === 0, 'bad=' + bad);
-    check('pitch：困难模式走向题一定可全对', unsolvable === 0);
+
+    // 真实判分：照真实方向作答必对；改动任意一对必错（不再使用恒真断言）
+    let wrongAccepted = 0, rightRejected = 0;
+    for (let i = 0; i < 300; i++) {
+        const notes = api.pickContour('hard');
+        const dirs = api.contourDirections(notes);
+        if (api.judgeContour(dirs.slice(), notes) !== true) rightRejected++;
+        const tampered = dirs.slice();
+        tampered[0] = tampered[0] === 'up' ? 'down' : 'up';
+        if (api.judgeContour(tampered, notes) !== false) wrongAccepted++;
+    }
+    check('pitch：照真实走向作答判为正确', rightRejected === 0, 'rejected=' + rightRejected);
+    check('pitch：改动任一对走向判为错误', wrongAccepted === 0, 'accepted=' + wrongAccepted);
+    check('pitch：答案长度不符判为错误',
+        api.judgeContour([], api.pickContour('easy')) === false);
 
     let octaveBad = 0;
     for (const diff of ['easy', 'medium', 'hard']) {

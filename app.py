@@ -1,10 +1,17 @@
+"""听音训练 Flask 后端。
+
+安全说明（公开部署）：
+    本应用默认按“单用户 / 内网”场景设计，写接口不做应用层鉴权。
+    若需暴露到公网，请通过反向代理（Nginx/Caddy 等）配置认证（Basic Auth / OAuth 等）
+    或限制访问来源，不要依赖应用自身的鉴权。
+"""
+import hashlib
 import io
 import json
 import os
 import re
 import shutil
 import sqlite3
-from functools import wraps
 
 from flask import Flask, render_template, request, jsonify, send_file
 
@@ -26,24 +33,6 @@ app = Flask(__name__)
 # 请求体上限：JSON / 图片 / OCR 均受此约束，超出由 Flask 直接返回 413
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 
-# 写操作保护：设置该环境变量后，所有写接口必须携带 X-Admin-Token
-ADMIN_TOKEN = os.environ.get('FLASK_ADMIN_TOKEN', '').strip()
-
-
-def write_protected(view):
-    """可选写保护：仅在配置了 FLASK_ADMIN_TOKEN 时校验请求头（本地单用户默认不开启）。"""
-
-    @wraps(view)
-    def wrapper(*args, **kwargs):
-        if ADMIN_TOKEN:
-            token = request.headers.get('X-Admin-Token', '')
-            if token != ADMIN_TOKEN:
-                return jsonify({'error': '未授权：缺少或错误的 X-Admin-Token'}), 401
-        return view(*args, **kwargs)
-
-    return wrapper
-
-
 # ==================== 内置曲库：唯一数据源 songs.json ====================
 SONGS_JSON_PATH = os.path.join(os.path.dirname(__file__), 'songs.json')
 
@@ -62,6 +51,15 @@ def load_builtin_songs():
 
 
 BUILTIN_SONGS = load_builtin_songs()
+
+
+def compute_data_version(songs):
+    """用 songs.json 内容哈希作为内置曲库数据版本，用于判断是否需要迁移。"""
+    payload = json.dumps(songs, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha1(payload.encode('utf-8')).hexdigest()[:12]
+
+
+BUILTIN_DATA_VERSION = compute_data_version(BUILTIN_SONGS)
 
 # ==================== 简谱持久化曲库数据库（SQLite） ====================
 # 用户数据库放在 instance/ 下并加入 .gitignore；首次启动时按 songs.json 播种。
@@ -88,11 +86,68 @@ TEMPO_MIN, TEMPO_MAX = 20, 300
 TIME_SIGNATURE_RE = re.compile(r'^\d{1,2}/\d{1,2}$')
 
 
-def init_db():
-    """初始化数据库，并仅在首次建库时播种内置曲目。
+def sync_builtin_songs(cursor):
+    """按 source_id 同步内置曲目。
 
-    内置曲目只在缺失时插入，已存在的记录不再更新，避免覆盖用户对谱面/调号/速度的修改。
+    - 新曲目（按 source_id 未匹配）插入；
+    - 已存在曲目按 source_id 匹配，仅更新内容字段（简谱/调号/拍号/速度/静态谱图），
+      **不修改标题**，因此修改 songs.json 的标题不会再产生重复曲目；
+    - 仅当 songs.json 数据版本变化时才执行内容更新，避免每次启动都写库。
     """
+    stored_version = None
+    row = cursor.execute("SELECT value FROM meta WHERE key = 'builtin_data_version'").fetchone()
+    if row:
+        stored_version = row[0]
+
+    for song in BUILTIN_SONGS:
+        source_id = song.get('id')
+        target = None
+        if source_id is not None:
+            target = cursor.execute(
+                'SELECT id FROM songs WHERE source_id = ? AND is_builtin = 1 LIMIT 1',
+                (source_id,)
+            ).fetchone()
+        if target is None:
+            # 兼容旧库：按标题匹配已有内置记录，随后回填 source_id
+            target = cursor.execute(
+                'SELECT id FROM songs WHERE title = ? AND is_builtin = 1 ORDER BY id ASC LIMIT 1',
+                (song.get('title'),)
+            ).fetchone()
+
+        if target is None:
+            cursor.execute(
+                '''INSERT INTO songs
+                   (title, jianpu, key_signature, time_signature, tempo, static_image, source_id, is_builtin)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, 1)''',
+                (song.get('title'), song.get('jianpu', ''), song.get('key', 'C'),
+                 song.get('time_signature', '4/4'), song.get('tempo'),
+                 song.get('static_image'), source_id)
+            )
+            continue
+
+        song_pk = target[0]
+        # 旧库升级：回填 source_id
+        cursor.execute(
+            'UPDATE songs SET source_id = ? WHERE id = ? AND (source_id IS NULL OR source_id <> ?)',
+            (source_id, song_pk, source_id)
+        )
+        if stored_version != BUILTIN_DATA_VERSION:
+            cursor.execute(
+                '''UPDATE songs
+                   SET jianpu = ?, key_signature = ?, time_signature = ?, tempo = ?, static_image = ?
+                   WHERE id = ?''',
+                (song.get('jianpu', ''), song.get('key', 'C'), song.get('time_signature', '4/4'),
+                 song.get('tempo'), song.get('static_image'), song_pk)
+            )
+
+    cursor.execute(
+        "INSERT OR REPLACE INTO meta (key, value) VALUES ('builtin_data_version', ?)",
+        (BUILTIN_DATA_VERSION,)
+    )
+
+
+def init_db():
+    """初始化数据库，并按 source_id 同步内置曲目（seed-once 之外的增量迁移）。"""
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     cursor.execute('''
@@ -105,42 +160,27 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    cursor.execute('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)')
+
     # 兼容已有数据库：SQLite 不支持 ADD COLUMN IF NOT EXISTS，因此按现有字段迁移。
     cursor.execute('PRAGMA table_info(songs)')
     columns = {row[1] for row in cursor.fetchall()}
-    image_columns = {
+    migrations = {
         'image_data': 'BLOB',
         'image_mime_type': 'TEXT',
         'image_filename': 'TEXT',
-        'image_updated_at': 'TIMESTAMP'
-    }
-    for name, column_type in image_columns.items():
-        if name not in columns:
-            cursor.execute(f'ALTER TABLE songs ADD COLUMN {name} {column_type}')
-
-    # 节奏元数据：拍号 / 速度，替代默认 4/4
-    extra_meta_columns = {
+        'image_updated_at': 'TIMESTAMP',
         'time_signature': "TEXT DEFAULT '4/4'",
-        'tempo': 'INTEGER'
+        'tempo': 'INTEGER',
+        'source_id': 'INTEGER',      # songs.json 中的稳定曲目 id
+        'static_image': 'TEXT',      # 内置静态谱图文件名（仅路径，不把图片写进数据库）
     }
-    for name, column_type in extra_meta_columns.items():
+    for name, column_type in migrations.items():
         if name not in columns:
             cursor.execute(f'ALTER TABLE songs ADD COLUMN {name} {column_type}')
     conn.commit()
 
-    # 内置曲库仅在“尚不存在”时插入（seed-once），不覆盖已有内置记录
-    for s in BUILTIN_SONGS:
-        cursor.execute(
-            'SELECT id FROM songs WHERE title = ? AND is_builtin = 1 ORDER BY id ASC LIMIT 1',
-            (s.get('title'),)
-        )
-        if cursor.fetchone():
-            continue
-        cursor.execute(
-            'INSERT INTO songs (title, jianpu, key_signature, time_signature, tempo, is_builtin) VALUES (?, ?, ?, ?, ?, 1)',
-            (s.get('title'), s.get('jianpu', ''), s.get('key', 'C'),
-             s.get('time_signature', '4/4'), s.get('tempo'))
-        )
+    sync_builtin_songs(cursor)
     conn.commit()
     conn.close()
 
@@ -191,59 +231,134 @@ def validate_image_bytes(image_data, max_bytes, label='图片'):
     return None
 
 
-def parse_song_payload(data):
-    """校验并规范化歌曲写入请求。
+def _validate_title(value):
+    if value is None:
+        return None, None
+    if not isinstance(value, str):
+        return None, 'title 必须是字符串'
+    value = value.strip()
+    if not value:
+        return None, '歌曲标题不能为空'
+    if len(value) > MAX_TITLE_LENGTH:
+        return None, '标题不能超过 %d 个字符' % MAX_TITLE_LENGTH
+    return value, None
 
-    返回 (payload, error)。payload 中 title 可能为 None（PUT 允许不修改标题）。
-    """
+
+def _validate_jianpu(value):
+    if value is None:
+        return None, None
+    if not isinstance(value, str) or not value.strip():
+        return None, '简谱内容不能为空'
+    value = value.strip()
+    if len(value) > MAX_JIANPU_LENGTH:
+        return None, '简谱内容过长（上限 %d 字符）' % MAX_JIANPU_LENGTH
+    return value, None
+
+
+def _validate_key(value):
+    if value is None:
+        return None, None
+    if not isinstance(value, str) or value not in ALLOWED_KEYS:
+        return None, '调号无效，必须是 %s 之一' % '、'.join(sorted(ALLOWED_KEYS))
+    return value, None
+
+
+def _validate_time_signature(value):
+    if value is None:
+        return None, None
+    if not isinstance(value, str) or not TIME_SIGNATURE_RE.match(value.strip()):
+        return None, '拍号格式无效，应形如 4/4'
+    return value.strip(), None
+
+
+def _validate_tempo(value):
+    if value is None or value == '':
+        return None, None
+    if isinstance(value, bool) or not isinstance(value, (int, str)):
+        return None, 'tempo 必须是整数'
+    try:
+        value = int(value)
+    except (TypeError, ValueError):
+        return None, 'tempo 必须是整数'
+    if not (TEMPO_MIN <= value <= TEMPO_MAX):
+        return None, 'tempo 需在 %d-%d 之间' % (TEMPO_MIN, TEMPO_MAX)
+    return value, None
+
+
+def parse_song_create(data):
+    """校验“新增歌曲”请求，返回 (payload, error)。"""
     if not isinstance(data, dict):
         return None, '请求体必须是 JSON 对象'
 
-    title = data.get('title')
-    if title is not None:
-        if not isinstance(title, str):
-            return None, 'title 必须是字符串'
-        title = title.strip()
-        if not title:
-            return None, '歌曲标题不能为空'
-        if len(title) > MAX_TITLE_LENGTH:
-            return None, '标题不能超过 %d 个字符' % MAX_TITLE_LENGTH
+    title, err = _validate_title(data.get('title'))
+    if err:
+        return None, err
+    if not title:
+        return None, '歌曲标题不能为空'
 
-    jianpu = data.get('jianpu')
-    if not isinstance(jianpu, str) or not jianpu.strip():
+    jianpu, err = _validate_jianpu(data.get('jianpu'))
+    if err:
+        return None, err
+    if not jianpu:
         return None, '简谱内容不能为空'
-    jianpu = jianpu.strip()
-    if len(jianpu) > MAX_JIANPU_LENGTH:
-        return None, '简谱内容过长（上限 %d 字符）' % MAX_JIANPU_LENGTH
 
-    key = data.get('key') or 'C'
-    if not isinstance(key, str) or key not in ALLOWED_KEYS:
-        return None, '调号无效，必须是 %s 之一' % '、'.join(sorted(ALLOWED_KEYS))
+    key, err = _validate_key(data.get('key') or 'C')
+    if err:
+        return None, err
 
-    time_signature = data.get('time_signature') or '4/4'
-    if not isinstance(time_signature, str) or not TIME_SIGNATURE_RE.match(time_signature.strip()):
-        return None, '拍号格式无效，应形如 4/4'
+    time_signature, err = _validate_time_signature(data.get('time_signature') or '4/4')
+    if err:
+        return None, err
 
-    tempo = data.get('tempo')
-    if tempo is None or tempo == '':
-        tempo = None
-    else:
-        if isinstance(tempo, bool) or not isinstance(tempo, (int, str)):
-            return None, 'tempo 必须是整数'
-        try:
-            tempo = int(tempo)
-        except (TypeError, ValueError):
-            return None, 'tempo 必须是整数'
-        if not (TEMPO_MIN <= tempo <= TEMPO_MAX):
-            return None, 'tempo 需在 %d-%d 之间' % (TEMPO_MIN, TEMPO_MAX)
+    tempo, err = _validate_tempo(data.get('tempo'))
+    if err:
+        return None, err
 
     return {
-        'title': title,
-        'jianpu': jianpu,
-        'key': key,
-        'time_signature': time_signature.strip(),
-        'tempo': tempo,
+        'title': title, 'jianpu': jianpu, 'key': key,
+        'time_signature': time_signature, 'tempo': tempo,
     }, None
+
+
+def parse_song_update(data):
+    """校验“更新歌曲”请求：只返回请求中实际提供的字段，未提供的字段保持数据库旧值。"""
+    if not isinstance(data, dict):
+        return None, '请求体必须是 JSON 对象'
+
+    payload = {}
+    if 'title' in data:
+        title, err = _validate_title(data['title'])
+        if err:
+            return None, err
+        if not title:
+            return None, '歌曲标题不能为空'
+        payload['title'] = title
+    if 'jianpu' in data:
+        jianpu, err = _validate_jianpu(data['jianpu'])
+        if err:
+            return None, err
+        if not jianpu:
+            return None, '简谱内容不能为空'
+        payload['jianpu'] = jianpu
+    if 'key' in data:
+        key, err = _validate_key(data['key'])
+        if err:
+            return None, err
+        payload['key'] = key
+    if 'time_signature' in data:
+        time_signature, err = _validate_time_signature(data['time_signature'])
+        if err:
+            return None, err
+        payload['time_signature'] = time_signature
+    if 'tempo' in data:
+        tempo, err = _validate_tempo(data['tempo'])
+        if err:
+            return None, err
+        payload['tempo'] = tempo
+
+    if not payload:
+        return None, '没有可更新的字段'
+    return payload, None
 
 
 @app.route('/api/ocr_jianpu', methods=['POST'])
@@ -376,39 +491,43 @@ def extract_jianpu_text(raw):
 
 
 # ==================== 曲库 RESTful API（查、增、改、删） ====================
+def _song_row_to_dict(row):
+    return {
+        'id': row[0],
+        'title': row[1],
+        'jianpu': row[2],
+        'key': row[3],
+        'time_signature': row[4] or '4/4',
+        'tempo': row[5],
+        'is_builtin': bool(row[6]),
+        'has_image': bool(row[7]),
+        'static_image': row[8],
+        'source_id': row[9],
+    }
+
+
 @app.route('/api/jianpu/songs', methods=['GET'])
 def get_jianpu_songs():
-    """获取所有简谱歌曲（包括内置与用户自建）"""
+    """获取所有简谱歌曲（包括内置与用户自建）。"""
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
-    cursor.execute('SELECT id, title, jianpu, key_signature, time_signature, tempo, is_builtin, image_data IS NOT NULL FROM songs ORDER BY is_builtin DESC, id ASC')
+    cursor.execute(
+        '''SELECT id, title, jianpu, key_signature, time_signature, tempo, is_builtin,
+                  image_data IS NOT NULL, static_image, source_id
+           FROM songs ORDER BY is_builtin DESC, id ASC'''
+    )
     rows = cursor.fetchall()
     conn.close()
-    songs = []
-    for r in rows:
-        songs.append({
-            'id': r[0],
-            'title': r[1],
-            'jianpu': r[2],
-            'key': r[3],
-            'time_signature': r[4] or '4/4',
-            'tempo': r[5],
-            'is_builtin': bool(r[6]),
-            'has_image': bool(r[7])
-        })
-    return jsonify({'songs': songs})
+    return jsonify({'songs': [_song_row_to_dict(r) for r in rows]})
 
 
 @app.route('/api/jianpu/songs', methods=['POST'])
-@write_protected
 def save_jianpu_song():
-    """保存用户自建简谱歌曲到数据库"""
+    """保存用户自建简谱歌曲到数据库。"""
     data = request.get_json(silent=True)
-    payload, error = parse_song_payload(data if data is not None else {})
+    payload, error = parse_song_create(data if data is not None else {})
     if error:
         return jsonify({'error': error}), 400
-    if not payload['title']:
-        return jsonify({'error': '歌曲标题不能为空'}), 400
 
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
@@ -435,11 +554,13 @@ def save_jianpu_song():
 
 
 @app.route('/api/jianpu/songs/<int:song_id>', methods=['PUT'])
-@write_protected
 def update_jianpu_song(song_id):
-    """编辑并保存用户自建歌曲。内置曲目只读，需另存为副本。"""
+    """部分更新自建歌曲：只写请求中提供的字段，未提供的字段保持旧值。
+
+    内置曲目只读，需在界面使用「另存为副本」。
+    """
     data = request.get_json(silent=True)
-    payload, error = parse_song_payload(data if data is not None else {})
+    payload, error = parse_song_update(data if data is not None else {})
     if error:
         return jsonify({'error': error}), 400
 
@@ -454,29 +575,40 @@ def update_jianpu_song(song_id):
         conn.close()
         return jsonify({'error': '内置曲目为只读，请使用「另存为副本」保存你的修改'}), 403
 
-    fields = ['jianpu = ?', 'key_signature = ?', 'time_signature = ?', 'tempo = ?']
-    values = [payload['jianpu'], payload['key'], payload['time_signature'], payload['tempo']]
-    if payload['title']:
-        fields.append('title = ?')
-        values.append(payload['title'])
-
+    column_map = {
+        'title': 'title',
+        'jianpu': 'jianpu',
+        'key': 'key_signature',
+        'time_signature': 'time_signature',
+        'tempo': 'tempo',
+    }
+    fields = []
+    values = []
+    for field, column in column_map.items():
+        if field in payload:
+            fields.append(column + ' = ?')
+            values.append(payload[field])
     values.append(song_id)
-    cursor.execute(f'UPDATE songs SET {", ".join(fields)} WHERE id = ?', values)
+    cursor.execute('UPDATE songs SET ' + ', '.join(fields) + ' WHERE id = ?', values)
     conn.commit()
 
     cursor.execute(
-        'SELECT id, title, jianpu, key_signature, time_signature, tempo, is_builtin FROM songs WHERE id = ?',
+        '''SELECT id, title, jianpu, key_signature, time_signature, tempo, is_builtin,
+                  image_data IS NOT NULL, static_image, source_id
+           FROM songs WHERE id = ?''',
         (song_id,)
     )
     r = cursor.fetchone()
     conn.close()
-    return jsonify({
-        'status': 'ok',
-        'song': {
-            'id': r[0], 'title': r[1], 'jianpu': r[2], 'key': r[3],
-            'time_signature': r[4] or '4/4', 'tempo': r[5], 'is_builtin': bool(r[6])
-        }
-    })
+    return jsonify({'status': 'ok', 'song': _song_row_to_dict(r)})
+
+
+def _fetch_song_builtin_flag(song_id):
+    conn = sqlite3.connect(DATABASE_PATH)
+    cursor = conn.cursor()
+    row = cursor.execute('SELECT is_builtin FROM songs WHERE id = ?', (song_id,)).fetchone()
+    conn.close()
+    return row
 
 
 @app.route('/api/jianpu/songs/<int:song_id>/image', methods=['GET'])
@@ -503,14 +635,19 @@ def get_jianpu_song_image(song_id):
 
 
 @app.route('/api/jianpu/songs/<int:song_id>/image', methods=['PUT'])
-@write_protected
 def put_jianpu_song_image(song_id):
-    """上传或替换歌曲谱图，图片以 BLOB 直接保存在 SQLite 中。"""
+    """上传或替换歌曲谱图，图片以 BLOB 直接保存在 SQLite 中（内置曲目只读）。"""
     file = request.files.get('image')
     if not file or not file.filename:
         return jsonify({'error': '请选择要保存的谱图图片'}), 400
     if file.mimetype not in ALLOWED_SONG_IMAGE_TYPES:
         return jsonify({'error': '仅支持 JPG、PNG、GIF 或 WebP 图片'}), 400
+
+    row = _fetch_song_builtin_flag(song_id)
+    if not row:
+        return jsonify({'error': '未找到指定歌曲'}), 404
+    if row[0] == 1:
+        return jsonify({'error': '内置曲目为只读，请先「另存为副本」再上传谱图'}), 403
 
     image_data = file.read()
     err = validate_image_bytes(image_data, MAX_SONG_IMAGE_BYTES)
@@ -519,10 +656,6 @@ def put_jianpu_song_image(song_id):
 
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
-    cursor.execute('SELECT id FROM songs WHERE id = ?', (song_id,))
-    if not cursor.fetchone():
-        conn.close()
-        return jsonify({'error': '未找到指定歌曲'}), 404
     cursor.execute(
         '''UPDATE songs
            SET image_data = ?, image_mime_type = ?, image_filename = ?,
@@ -541,15 +674,16 @@ def put_jianpu_song_image(song_id):
 
 
 @app.route('/api/jianpu/songs/<int:song_id>/image', methods=['DELETE'])
-@write_protected
 def delete_jianpu_song_image(song_id):
-    """删除歌曲关联的谱图，不会删除简谱文本或歌曲记录。"""
+    """删除歌曲关联的谱图（内置曲目只读），不会删除简谱文本或歌曲记录。"""
+    row = _fetch_song_builtin_flag(song_id)
+    if not row:
+        return jsonify({'error': '未找到指定歌曲'}), 404
+    if row[0] == 1:
+        return jsonify({'error': '内置曲目为只读，无法删除其谱图'}), 403
+
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
-    cursor.execute('SELECT id FROM songs WHERE id = ?', (song_id,))
-    if not cursor.fetchone():
-        conn.close()
-        return jsonify({'error': '未找到指定歌曲'}), 404
     cursor.execute(
         '''UPDATE songs
            SET image_data = NULL, image_mime_type = NULL, image_filename = NULL,
@@ -563,9 +697,8 @@ def delete_jianpu_song_image(song_id):
 
 
 @app.route('/api/jianpu/songs/<int:song_id>', methods=['DELETE'])
-@write_protected
 def delete_jianpu_song(song_id):
-    """从数据库删除用户自建的歌曲（内置经典曲目受保护）"""
+    """从数据库删除用户自建的歌曲（内置经典曲目受保护）。"""
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT is_builtin FROM songs WHERE id = ?', (song_id,))

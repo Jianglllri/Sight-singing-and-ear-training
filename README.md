@@ -92,10 +92,22 @@
 | `FLASK_HOST` | `127.0.0.1` | 监听地址；设为 `0.0.0.0` 可对外提供访问 |
 | `FLASK_PORT` | `5000` | 监听端口 |
 | `FLASK_DEBUG` | `0` | 是否开启调试模式；**公开部署请保持关闭** |
-| `FLASK_ADMIN_TOKEN` | 空 | 设置后，所有写接口需携带请求头 `X-Admin-Token` |
 | `JIANPU_DB_PATH` | `instance/jianpu_library.db` | 自定义 SQLite 数据库路径 |
 
-> 公开部署建议：`FLASK_DEBUG=0` + 设置 `FLASK_ADMIN_TOKEN` + 使用 Gunicorn/Waitress 等生产服务器（不要使用 Flask 开发服务器）。
+### 公开部署与鉴权
+
+应用本身按“单用户 / 内网”场景设计，**写接口不做应用层鉴权**（避免把密钥硬编码进前端）。
+若要暴露到公网，请由反向代理完成认证与限流，例如用 Nginx 做 Basic Auth：
+
+```nginx
+location / {
+    auth_basic "Sound Training";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+    proxy_pass http://127.0.0.1:5000;
+}
+```
+
+也可以使用 OAuth、VPN、IP 白名单等任一方式限制来源。生产环境请使用 Gunicorn/Waitress 等 WSGI 服务器，不要使用 Flask 开发服务器。
 
 ## 📁 项目结构
 
@@ -135,6 +147,8 @@ Sight-singing-and-ear-training/
 
 - `docs/` 由 `templates/` 与 `static/` 自动生成，请勿手工同时维护两份。
 - 内置曲目为**只读**：在网页上修改内置曲目会“另存为副本”为自建曲目，不会覆盖内置数据；数据库在重启后也不会重置你的修改。
+- 内置曲目自带静态谱图（`songs.json` 的 `static_image`），API 会一并返回；只有当你在自建曲目上**手动上传图片**时，才会把图片写入 SQLite。
+- 内置曲目的更新按 `source_id` 迁移：修改 `songs.json` 的简谱/速度/调号后，老用户数据库会在下次启动时同步内容（标题不会被改动，因此不会产生重复曲目）。
 
 ## 🎵 音频资源
 

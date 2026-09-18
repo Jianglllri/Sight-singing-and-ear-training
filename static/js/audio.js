@@ -6,6 +6,7 @@ class AudioSystem {
         this.gainNodes = [];         // 与振荡器一一对应的增益节点
         this.bufferSources = [];     // 正在播放的采样音源（停止时需要一并关闭）
         this.activeTimers = [];      // 统一登记的定时器（停止时需要清除未触发的回调）
+        this.playToken = 0;          // 播放批次号：stopAll() 递增，用于丢弃仍在异步加载中的旧音符
         this.noteFrequencies = {
             'C': 261.63,
             'C#': 277.18,
@@ -85,6 +86,15 @@ class AudioSystem {
         }
     }
 
+    // 移动端/浏览器自动播放策略：suspended 状态下需要用户交互后恢复
+    resumeAudioContext() {
+        if (!this.audioContext) return;
+        if (this.audioContext.state === 'suspended' && typeof this.audioContext.resume === 'function') {
+            const result = this.audioContext.resume();
+            if (result && typeof result.catch === 'function') result.catch(() => {});
+        }
+    }
+
     // 将音符名 + 八度换算为频率（C4 为基准，可用八度线性外推）
     frequencyFor(note, octave = 4) {
         const base = this.noteFrequencies[note];
@@ -104,6 +114,7 @@ class AudioSystem {
     // 播放指定频率的音符（合成声音），duration 控制实际发声时长
     playFrequency(frequency, duration = 1.0) {
         this.initAudioContext();
+        this.resumeAudioContext();
         if (!this.audioContext || !frequency) return;
 
         const now = this.audioContext.currentTime;
@@ -157,6 +168,7 @@ class AudioSystem {
     // 播放指定音符（优先采样，采样不可用时回退合成音）
     // forceSynthesis=true 时强制使用合成音，避免采样失败后再次进入采样分支
     playNote(note, octave = 4, duration = 1.0, forceSynthesis = false) {
+        this.resumeAudioContext();
         if (!forceSynthesis && this.useSamples) {
             let audioFile = null;
 
@@ -183,6 +195,7 @@ class AudioSystem {
     // 播放采样文件，duration 控制实际播放时长
     async playSample(note, octave = 4, duration = 1.0, audioFile = null) {
         this.initAudioContext();
+        const token = this.playToken; // 记录本批次；若加载期间 stopAll() 被调用则丢弃
         const fullNote = `${note}${octave}`;
 
         try {
@@ -203,6 +216,9 @@ class AudioSystem {
             if (!this.sampleCache[fullNote]) {
                 await this.loadSampleBuffer(fullNote, audioFile);
             }
+
+            // 加载期间可能已经点击“停止”：丢弃这个旧音符，避免延迟发声
+            if (token !== this.playToken) return;
 
             const buffer = this.sampleCache[fullNote];
             if (!buffer) {
@@ -242,6 +258,7 @@ class AudioSystem {
             };
         } catch (error) {
             console.error('Error playing sample:', error, 'for note:', fullNote);
+            if (token !== this.playToken) return; // 已被停止，不再回退发声
             // 采样不可用时只回退一次到合成音：直接计算频率播放，不再回到 playNote 以免递归重试
             const frequency = this.frequencyFor(note, octave);
             if (frequency) this.playFrequency(frequency, duration);
@@ -358,6 +375,8 @@ class AudioSystem {
 
     // 停止所有正在播放/等待播放的音符（合成音 + 采样音 + 未触发定时器）
     stopAll() {
+        // 递增批次号：正在异步加载的旧音符会在 await 之后被丢弃
+        this.playToken += 1;
         this.clearTimers();
 
         this.oscillators.forEach(oscillator => {
