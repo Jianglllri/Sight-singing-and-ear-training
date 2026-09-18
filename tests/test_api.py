@@ -196,17 +196,70 @@ def test_put_without_fields_is_rejected(client):
 
 
 def test_invalid_time_signatures_rejected(client):
-    """只校验格式是不够的：00/00、99/99、3/0、7/8 都必须被拒绝。"""
-    for ts in ['00/00', '99/99', '3/0', '7/8', '4-4']:
+    """分子/分母范围与格式都要校验：00/00、3/0、99/99、33/4、4/3、4-4 都必须被拒绝。"""
+    for ts in ['00/00', '99/99', '3/0', '33/4', '4/3', '4-4']:
         res = client.post('/api/jianpu/songs', json={'title': 'ts', 'jianpu': '1', 'time_signature': ts})
         assert res.status_code == 400, '非法拍号未被拒绝: %s' % ts
 
 
-def test_valid_time_signature_accepted(client):
-    for ts in ['2/4', '4/4', '6/8', '12/8']:
+def test_valid_time_signatures_accepted(client):
+    """除常见拍号外，也应支持 5/4、7/8 等自定义曲谱。"""
+    for ts in ['2/4', '3/4', '4/4', '6/8', '9/8', '12/8', '5/4', '7/8', '1/1', '32/32']:
         res = client.post('/api/jianpu/songs', json={'title': 'ts', 'jianpu': '1', 'time_signature': ts})
         assert res.status_code == 201, ts
         client.delete('/api/jianpu/songs/%d' % res.get_json()['song']['id'])
+
+
+def test_image_mime_uses_detected_format(client):
+    """JPEG 数据声明为 image/png 时，必须按真实格式保存（image/jpeg）。"""
+    import io
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new('RGB', (2, 2), (0, 255, 0)).save(buf, format='JPEG')
+    jpeg_bytes = buf.getvalue()
+
+    res = client.post('/api/jianpu/songs', json={'title': 'mime 测试', 'jianpu': '1'})
+    song_id = res.get_json()['song']['id']
+
+    res = client.put('/api/jianpu/songs/%d/image' % song_id,
+                     data={'image': (io.BytesIO(jpeg_bytes), 'fake.png', 'image/png')},
+                     content_type='multipart/form-data')
+    assert res.status_code == 200
+    assert res.get_json()['mime'] == 'image/jpeg'
+
+    fetched = client.get('/api/jianpu/songs/%d/image' % song_id)
+    assert fetched.headers['Content-Type'].startswith('image/jpeg')
+    client.delete('/api/jianpu/songs/%d' % song_id)
+
+
+def test_songs_json_load_failure_is_reported(app_module, tmp_path):
+    """读取/解析失败必须返回 ok=False，以便调用方跳过同步。"""
+    original = app_module.SONGS_JSON_PATH
+    try:
+        bad = tmp_path / 'songs.json'
+        bad.write_text('{ not valid json', encoding='utf-8')
+        app_module.SONGS_JSON_PATH = str(bad)
+        songs, ok = app_module.load_builtin_songs()
+        assert ok is False and songs == []
+
+        app_module.SONGS_JSON_PATH = str(tmp_path / 'missing.json')
+        songs, ok = app_module.load_builtin_songs()
+        assert ok is False and songs == []
+    finally:
+        app_module.SONGS_JSON_PATH = original
+
+
+def test_init_db_skips_sync_when_songs_unavailable(client, app_module):
+    """songs.json 不可用时不得把内置曲目全部停用。"""
+    original_ok = app_module.BUILTIN_SONGS_OK
+    try:
+        app_module.BUILTIN_SONGS_OK = False
+        app_module.init_db()
+        builtins = [s for s in client.get('/api/jianpu/songs').get_json()['songs'] if s['is_builtin']]
+        assert len(builtins) >= 20
+    finally:
+        app_module.BUILTIN_SONGS_OK = original_ok
+        app_module.init_db()
 
 
 def test_songs_json_ids_unique(app_module):
@@ -264,5 +317,3 @@ def test_builtin_migration_updates_title_and_soft_deletes(client, app_module):
     conn.close()
     assert restored[0] == original_songs[0]['title']
     assert restored[1] == 1
-
-

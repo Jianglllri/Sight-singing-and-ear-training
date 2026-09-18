@@ -103,7 +103,8 @@ function initScalePractice() {
 const recordingState = {
     active: false,
     notes: [],
-    startTime: 0
+    startTime: 0,
+    playing: false
 };
 
 // 弹奏时记录音符（供录音功能调用，琴键点击与键盘快捷键均可接入）
@@ -137,12 +138,39 @@ function initFreePlayRecording() {
     });
     
     playBackBtn.addEventListener('click', function() {
+        if (recordingState.playing) {
+            // 再次点击 = 停止回放
+            if (window.audioSystem) audioSystem.stopAll();
+            recordingState.playing = false;
+            playBackBtn.textContent = '播放录音';
+            return;
+        }
+        if (!recordingState.notes || recordingState.notes.length === 0) {
+            alert('没有录音内容');
+            return;
+        }
+        recordingState.playing = true;
+        playBackBtn.textContent = '停止回放';
         playBackRecordedNotes(recordingState.notes);
+        // 回放计划结束后自动复位按钮（按最后一条的时间估算）
+        const lastDelay = recordingState.notes.reduce(function (max, r) {
+            return Math.max(max, r.delay || 0);
+        }, 0);
+        if (window.audioSystem) {
+            audioSystem.scheduleTimer(function () {
+                recordingState.playing = false;
+                playBackBtn.textContent = '播放录音';
+            }, lastDelay + 1200);
+        }
     });
     
     clearBtn.addEventListener('click', function() {
+        // 清除录音时同时停止当前回放
+        if (window.audioSystem) audioSystem.stopAll();
         recordingState.notes = [];
         recordingState.active = false;
+        recordingState.playing = false;
+        playBackBtn.textContent = '播放录音';
         recordBtn.textContent = '开始录音';
         recordBtn.classList.remove('btn-danger');
         recordBtn.classList.add('btn-primary');
@@ -181,7 +209,7 @@ function initCMajorScalePractice() {
     let isPlaying = false;
     let isPaused = false;
     let pauseRequested = false;
-    let currentSpeed = 100;
+    let currentSpeed = speedSlider ? (parseInt(speedSlider.value, 10) || 100) : 100; // 与页面滑块/显示保持一致
     let currentPause = 3;
     let timer = null;
     let includeBlackKeys = false;
@@ -1080,7 +1108,10 @@ function initCMajorScalePractice() {
         // 播放随机音（二分音符时值）
         audioSystem.playNote(playableRandomNote, randomOctave, halfNoteDuration);
         await new Promise(resolve => setTimeout(resolve, halfNoteDuration * 1000));
-        
+
+        // 该音符持续期间可能已点击“停止”：旧流程必须立即失效，不能继续改页面状态
+        if (!isSessionActive(token)) return;
+
         // 检查是否是考试模式
         if (currentMode === 'exam') {
             // 考试模式：直接进入等待用户回答状态
@@ -1094,6 +1125,9 @@ function initCMajorScalePractice() {
             if (!isSessionActive(token)) return;
             audioSystem.playNote(playableRandomNote, randomOctave, halfNoteDuration);
             await new Promise(resolve => setTimeout(resolve, halfNoteDuration * 1000));
+
+            // 同样在第二个随机音播放期间也可能被停止
+            if (!isSessionActive(token)) return;
         }
         
         // 检查是否是考试模式
@@ -1454,6 +1488,8 @@ function initCMajorScalePractice() {
             clickStop: function () { stopBtn.click(); },
             clickPause: function () { pauseBtn.click(); },
             setCurrentSpeed: function (v) { currentSpeed = v; },
+            setSkipScale: function (v) { skipScale = !!v; },
+            setCurrentMode: function (m) { currentMode = m; },
             setWaitingForAnswer: function (v) { isWaitingForAnswer = !!v; },
             getResultText: function () { return resultText.textContent; },
             handleKey: function (note, octave) {
@@ -1469,9 +1505,13 @@ function playBackRecordedNotes(notes) {
         alert('没有录音内容');
         return;
     }
-    
+    if (!window.audioSystem) return;
+
+    // 先停掉上一次回放（及其他正在播放的音），避免多次点击叠加
+    audioSystem.stopAll();
+
     notes.forEach(record => {
-        setTimeout(() => {
+        audioSystem.scheduleTimer(function () {
             audioSystem.playNote(record.note, record.octave, 1.0);
         }, record.delay);
     });
@@ -1513,6 +1553,9 @@ const KEY_NOTE_MAP = {
     'l': { note: 'D', octave: 5 }
 };
 
+// 仅在模拟钢琴页（存在 #piano-viewport）启用电脑键盘弹奏：
+// 避免在首页 / 简谱页 / 音高页误发声，也避免在自然大调考试中用键盘“绕过”听音作答。
+if (document.getElementById('piano-viewport')) {
 document.addEventListener('keydown', function(e) {
     const tag = (e.target && e.target.tagName) || '';
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
@@ -1536,3 +1579,4 @@ document.addEventListener('keydown', function(e) {
         if (window.drawStaff) window.drawStaff(key.note, key.octave);
     }
 });
+}

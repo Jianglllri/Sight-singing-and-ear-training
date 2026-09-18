@@ -459,6 +459,22 @@ async function testScalePracticeSession() {
     await sleep(50);
     check('scale：停止后立即重启不会双重播放（异步流程已失效）',
         total - afterStop <= 4, 'afterStop=' + afterStop + ' total=' + total);
+
+    // 4. 考试：最后一个随机音播放期间点击停止，不得再进入答题状态
+    //    跳过音阶后流程为：主音×2（各 1.33s）→ 随机音（1.33s）→ 设置 isWaitingForAnswer
+    dbg.setSkipScale(true);
+    dbg.setCurrentMode('exam');
+    dbg.clickStart();
+    await sleep(2900);   // 此时正处于最后一个随机音的播放窗口
+    dbg.clickStop();
+    await sleep(1600);   // 若旧流程未失效，会在此后把 isWaitingForAnswer 置为 true
+    st = dbg.state();
+    check('scale：考试最后一个随机音期间停止后不再进入答题状态',
+        st.isWaitingForAnswer === false && st.isPlaying === false, JSON.stringify(st));
+    check('scale：停止后不再显示“请选择最后播放的音”',
+        dbg.getResultText() !== '请在钢琴上选择最后播放的音', JSON.stringify(dbg.getResultText()));
+    dbg.setSkipScale(false);
+    dbg.setCurrentMode('training');
 }
 
 (async function main() {

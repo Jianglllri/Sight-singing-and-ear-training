@@ -38,19 +38,27 @@ SONGS_JSON_PATH = os.path.join(os.path.dirname(__file__), 'songs.json')
 
 
 def load_builtin_songs():
-    """从 songs.json 读取内置曲目；文件缺失或损坏时返回空列表并告警。"""
+    """读取内置曲目，返回 (songs, ok)。
+
+    ok=False 表示“读取/解析失败”（与“合法的空曲库”区分开），
+    调用方应跳过内置曲目同步，避免把现有内置曲目误判为已移除而停用。
+    """
     try:
         with open(SONGS_JSON_PATH, encoding='utf-8') as f:
             data = json.load(f)
-        if isinstance(data, list):
-            return data
-        app.logger.warning('songs.json 结构应为数组，已忽略')
+    except FileNotFoundError:
+        app.logger.warning('未找到 songs.json（%s），本次跳过内置曲目同步', SONGS_JSON_PATH)
+        return [], False
     except (OSError, ValueError) as exc:
-        app.logger.warning('无法读取 songs.json：%s', exc)
-    return []
+        app.logger.warning('读取 songs.json 失败：%s，本次跳过内置曲目同步', exc)
+        return [], False
+    if not isinstance(data, list):
+        app.logger.warning('songs.json 结构应为数组，本次跳过内置曲目同步')
+        return [], False
+    return data, True
 
 
-BUILTIN_SONGS = load_builtin_songs()
+BUILTIN_SONGS, BUILTIN_SONGS_OK = load_builtin_songs()
 
 
 def compute_data_version(songs):
@@ -98,13 +106,16 @@ MAX_IMAGE_PIXELS = 30_000_000
 MAX_TITLE_LENGTH = 100
 MAX_JIANPU_LENGTH = 200_000
 ALLOWED_SONG_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
+# Pillow 检测到的真实格式 -> MIME（用于按真实格式保存，而非客户端声明）
+IMAGE_FORMAT_MIME = {'JPEG': 'image/jpeg', 'PNG': 'image/png', 'GIF': 'image/gif', 'WEBP': 'image/webp'}
 ALLOWED_KEYS = {
     'C', 'B#', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'Fb', 'F', 'E#',
     'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B', 'Cb',
 }
 TEMPO_MIN, TEMPO_MAX = 20, 300
-# 系统实际支持的拍号集合（校验分母/范围，避免 00/00、3/0 之类的非法值）
-ALLOWED_TIME_SIGNATURES = {'2/4', '3/4', '4/4', '6/8', '9/8', '12/8'}
+# 拍号：分子 1-32、分母限定为 1/2/4/8/16/32（支持 5/4、7/8 等自定义曲谱）
+TIME_SIGNATURE_RE = re.compile(r'^(\d{1,2})/(\d{1,2})$')
+TIME_SIGNATURE_MAX_NUMERATOR = 32
 ALLOWED_TIME_SIGNATURE_DENOMINATORS = {1, 2, 4, 8, 16, 32}
 
 
@@ -229,7 +240,10 @@ def init_db():
     )
     conn.commit()
 
-    sync_builtin_songs(cursor)
+    if BUILTIN_SONGS_OK:
+        sync_builtin_songs(cursor)
+    else:
+        app.logger.warning('内置曲目数据不可用，本次启动跳过同步（不会停用任何内置曲目）')
     conn.commit()
     conn.close()
 
@@ -261,23 +275,41 @@ for _name, (_template, _title) in PAGES.items():
 
 
 # ==================== 请求校验工具 ====================
+def detect_image(image_data):
+    """根据真实解码结果返回 (mime, width, height, error)。
+
+    mime 依据 Pillow 检测到的实际格式（非客户端声明），避免“JPEG 数据声明为 PNG”。
+    未安装 PIL 时返回 (None, 0, 0, None)，由调用方按客户端类型兜底。
+    """
+    if not image_data:
+        return None, 0, 0, '图片内容为空'
+    if not PIL_AVAILABLE:
+        return None, 0, 0, None
+    try:
+        with Image.open(io.BytesIO(image_data)) as probe:
+            fmt = (probe.format or '').upper()
+            probe.verify()
+        with Image.open(io.BytesIO(image_data)) as probe:
+            width, height = probe.size
+    except Exception:
+        return None, 0, 0, '无法识别的图片内容，请上传 JPG/PNG/GIF/WebP'
+
+    mime = IMAGE_FORMAT_MIME.get(fmt)
+    if not mime:
+        return None, 0, 0, '不支持的图片格式，请上传 JPG/PNG/GIF/WebP'
+    if width * height > MAX_IMAGE_PIXELS:
+        return None, 0, 0, '图片像素过大（上限 %d 万像素）' % (MAX_IMAGE_PIXELS // 10000)
+    return mime, width, height, None
+
+
 def validate_image_bytes(image_data, max_bytes, label='图片'):
     """校验图片体积与真实图像内容，返回错误信息（合法则返回 None）。"""
     if not image_data:
         return '%s内容为空' % label
     if len(image_data) > max_bytes:
         return '%s不能超过 %d MB' % (label, max_bytes // (1024 * 1024))
-    if PIL_AVAILABLE:
-        try:
-            with Image.open(io.BytesIO(image_data)) as probe:
-                probe.verify()
-            with Image.open(io.BytesIO(image_data)) as probe:
-                width, height = probe.size
-        except Exception:
-            return '无法识别的图片内容，请上传 JPG/PNG/GIF/WebP'
-        if width * height > MAX_IMAGE_PIXELS:
-            return '图片像素过大（上限 %d 万像素）' % (MAX_IMAGE_PIXELS // 10000)
-    return None
+    _mime, _w, _h, err = detect_image(image_data)
+    return err
 
 
 def _validate_title(value):
@@ -318,8 +350,15 @@ def _validate_time_signature(value):
     if not isinstance(value, str):
         return None, '拍号必须是字符串'
     ts = value.strip()
-    if ts not in ALLOWED_TIME_SIGNATURES:
-        return None, '拍号无效，仅支持：%s' % '、'.join(sorted(ALLOWED_TIME_SIGNATURES))
+    match = TIME_SIGNATURE_RE.match(ts)
+    if not match:
+        return None, '拍号格式无效，应形如 4/4'
+    numerator, denominator = int(match.group(1)), int(match.group(2))
+    if not (1 <= numerator <= TIME_SIGNATURE_MAX_NUMERATOR):
+        return None, '拍号分子需在 1-%d 之间' % TIME_SIGNATURE_MAX_NUMERATOR
+    if denominator not in ALLOWED_TIME_SIGNATURE_DENOMINATORS:
+        return None, '拍号分母仅支持 %s' % '、'.join(
+            str(d) for d in sorted(ALLOWED_TIME_SIGNATURE_DENOMINATORS))
     return ts, None
 
 
@@ -707,6 +746,12 @@ def put_jianpu_song_image(song_id):
     if err:
         return jsonify({'error': err}), 400
 
+    # 以 Pillow 检测到的真实格式为准；客户端声明的 MIME 仅用于上面的初筛
+    real_mime, _width, _height, detect_err = detect_image(image_data)
+    if detect_err:
+        return jsonify({'error': detect_err}), 400
+    stored_mime = real_mime or file.mimetype
+
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     cursor.execute(
@@ -714,7 +759,7 @@ def put_jianpu_song_image(song_id):
            SET image_data = ?, image_mime_type = ?, image_filename = ?,
                image_updated_at = CURRENT_TIMESTAMP
            WHERE id = ?''',
-        (sqlite3.Binary(image_data), file.mimetype, os.path.basename(file.filename), song_id)
+        (sqlite3.Binary(image_data), stored_mime, os.path.basename(file.filename), song_id)
     )
     conn.commit()
     conn.close()
@@ -722,6 +767,7 @@ def put_jianpu_song_image(song_id):
         'status': 'ok',
         'image_url': f'/api/jianpu/songs/{song_id}/image',
         'size': len(image_data),
+        'mime': stored_mime,
         'filename': os.path.basename(file.filename)
     })
 

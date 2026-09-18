@@ -890,13 +890,21 @@ var libraryUsesBackend = false;
         }
     }
 
+    // 写入本地曲库：返回是否真正写入成功（配额满 / 隐私模式 / 存储损坏都会失败）。
+    // 并在写入后回读校验，避免“setItem 不报错但实际未写入”的情况。
     function setLocalStorageSongs(songs) {
         try {
-            localStorage.setItem('user_jianpu_songs', JSON.stringify(songs));
-        } catch (e) {}
+            var payload = JSON.stringify(songs);
+            localStorage.setItem('user_jianpu_songs', payload);
+            return localStorage.getItem('user_jianpu_songs') === payload;
+        } catch (e) {
+            return false;
+        }
     }
 
-    // 把一首歌写入浏览器本地曲库（仅静态部署/网络异常时使用），返回新 id
+    var LOCAL_STORAGE_FAIL_MSG = '浏览器存储失败（可能是隐私模式或存储配额已满），数据未保存';
+
+    // 把一首歌写入浏览器本地曲库（仅静态部署/网络异常时使用）：成功返回新 id，失败返回 null
     function saveLocalCopy(title, jianpu, key, meta) {
         var customs = getLocalStorageSongs();
         var newId = 'local_' + Date.now();
@@ -906,7 +914,7 @@ var libraryUsesBackend = false;
             if (meta.tempo) song.tempo = meta.tempo;
         }
         customs.push(song);
-        setLocalStorageSongs(customs);
+        if (!setLocalStorageSongs(customs)) return null;
         return newId;
     }
 
@@ -1184,6 +1192,7 @@ var updateBtn = document.getElementById('jianpu-update-btn');
                         // 仅在确认无后端（静态部署）时才自动保存到本地
                         if (!libraryUsesBackend) {
                             var localId = saveLocalCopy(title, jianpu, key, newSongMeta);
+                            if (!localId) { setStatus(LOCAL_STORAGE_FAIL_MSG, 'bad'); return; }
                             setStatus('未检测到后端服务，已保存到浏览器本地曲库「' + title + '」', 'ok');
                             if (saveBar) saveBar.style.display = 'none';
                             document.getElementById('jianpu-custom-title').value = '';
@@ -1192,7 +1201,10 @@ var updateBtn = document.getElementById('jianpu-update-btn');
                         }
                         // 后端存在但网络异常：询问用户是否改存本地
                         if (confirm('保存到服务器失败（网络异常）。是否改存到浏览器本地？\n注意：本地数据仅当前浏览器可见。')) {
-                            saveLocalCopy(title, jianpu, key, newSongMeta);
+                            if (!saveLocalCopy(title, jianpu, key, newSongMeta)) {
+                                setStatus(LOCAL_STORAGE_FAIL_MSG, 'bad');
+                                return;
+                            }
                             if (saveBar) saveBar.style.display = 'none';
                             document.getElementById('jianpu-custom-title').value = '';
                             setStatus('已改存到浏览器本地「' + title + '」（服务器未保存）', 'ok');
@@ -1227,6 +1239,7 @@ var updateBtn = document.getElementById('jianpu-update-btn');
                     if (action === 'local-copy') {
                         var copyTitle = (found.title || '未命名') + '（副本）';
                         var copyId = saveLocalCopy(copyTitle, jianpu, found.key || 'C', meta);
+                        if (!copyId) { setStatus(LOCAL_STORAGE_FAIL_MSG, 'bad'); return; }
                         setStatus('内置曲目为只读（静态部署），已另存为本地副本「' + copyTitle + '」', 'ok');
                         loadLibraryFromDB(copyId);
                         return;
@@ -1237,7 +1250,7 @@ var updateBtn = document.getElementById('jianpu-update-btn');
                         item.jianpu = jianpu;
                         if (meta.time_signature) item.time_signature = meta.time_signature;
                         if (meta.tempo) item.tempo = meta.tempo;
-                        setLocalStorageSongs(customs);
+                        if (!setLocalStorageSongs(customs)) { setStatus(LOCAL_STORAGE_FAIL_MSG, 'bad'); return; }
                         found.jianpu = jianpu;
                         setStatus('已保存修改到浏览器本地曲库「' + found.title + '」！', 'ok');
                     } else {
@@ -1320,7 +1333,7 @@ var updateBtn = document.getElementById('jianpu-update-btn');
                 if (String(curId).indexOf('local_') === 0 || !libraryUsesBackend) {
                     var customs = getLocalStorageSongs();
                     customs = customs.filter(function (s) { return String(s.id) !== String(curId); });
-                    setLocalStorageSongs(customs);
+                    if (!setLocalStorageSongs(customs)) { delBtn.disabled = false; setStatus(LOCAL_STORAGE_FAIL_MSG, 'bad'); return; }
                     delBtn.disabled = false;
                     setStatus('歌曲「' + found.title + '」已从浏览器本地曲库删除！', 'ok');
                     loadLibraryFromDB();
