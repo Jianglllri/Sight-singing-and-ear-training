@@ -2,28 +2,9 @@
 // 八度标记：组合高音点 1̇（U+0307）、组合低音点（U+0323），兼容 1' / 1, 写法
 (function () {
     // ===== 内置简谱曲库（默认 1 = C，C4 为基准） =====
-    var DEFAULT_STATIC_SONGS = [
-        { id: 1, title: '两难（加木）', key: 'C', is_builtin: 1, static_image: 'song-1.png', jianpu: '0 0 0 6 5 6 6 | 6 3 2 3 3 4 5 5 | 5 3 2 3 3 3 2 3 2 3 | 6 7 1 5 5 5 5 | 6 7 1 6 6 6 5 6 6 | 6 3 2 3 3 4 5 5 | 5 3 2 3 3 3 2 3 2 3 | 6 7 1 5 5 5 5 | 6 7 1 1̇ 1̇ 7 6 3 | 6 6 3 3 3 3 3 3 2 3 2 | 3 3 3 3 3 3 3 2 3. 6 | 6 1 6 1 3 3 2 3 2 3 | 3 3 3 2 3 0 2 3 3 | 6 6 3 3 3 1 2 1 2 | 6̣. 3 3 5 5 1 2 1 2 | 6̣. 3 3 5 5 1 2 1 2 | 6 3 3 3 5 3 5 3 1 1 | 1 1 5 3 1 1 1 1̣ 3 | 0 1 1 1' },
-        { id: 2, title: '问风（金渔）', key: 'Ab', time_signature: '4/4', tempo: 125, is_builtin: 1, static_image: 'song-2.png', jianpu: '6̣ 3 2 3 6̣ 3 2 3 | 6̣ 3 2 3 7̣ 3 2 3 | 7̣ 1 7̣ 5̣ 3 2 3 5 | 3 2 3 5 1 7 1 2 | 3 2 3 2 3 3 2 | 3 2 3 3 2 3 5 | 3 6̣ - - | 3 2 3 2 3 3 2 | 3 2 3 3 2 3 5 | 5 6̣ 6̣ - - | 1̇ 6 6 5 3 | 5 3 2 3 3 2 1 | 2 2 2 3 3 - | 6̣ 6̣ 6̣ 6̣ 6̣ 6̣ | 5 5 5 5 1 7 6 | 6̣ - - - | 3 6̣ 5 6̣ 5 6̣ 5 | 6̣ - 6 6 6 6 | 3 6̣ 5 6̣ 5 6̣ 5 | 3 - 6 6 6 6 | 3 6̣ 3 6 | 2 1 2 1 2 3 | 2 1 6̣ - - -' },
-        { id: 3, title: '暖暖（梁静茹）', key: 'B', is_builtin: 1, static_image: 'song-3.png', jianpu: '2 3 3 2 3 3 | 2 3 5 3 1 1 5 | 6̣. 3 2 1 2 | 3 - 0 5 1 2 | 2 3 3 2 3 3 | 2 3 5 3 1 1 7 6̣ | 3 2 1 2 1 - - | 1 7 6̣ 1 2 1 2 | 3 5 2 3 1 1 7 6 | 1 2 3 2 1 2 | 3 - 1 7 | 6 1 2 3 2 1 2 | 3 5 5 3 6 3 2 1. | 3 2 2 1 2 1 - 0 1 3 4 | 5 1 3 4 5 6 7 | 1̇ 3 3 4 5 - 6 | 5 4 5 1 6 6 7 1̇ | 7 5 3 4 5 6 7 | 1 7 6 5 - | 4 5 6 4 5 1̇ | 1̇ 7 5 1 3 2 1 | 1 - - -' },
-        { id: 4, title: '青花瓷（周杰伦）', key: 'A', time_signature: '4/4', is_builtin: 1, static_image: 'song-4.png', jianpu: '0_ 2_ 1_ 6̣ | 1_ 1_ 6̣_ 1_ 1_ 6̣_ 1_ 6̣_ | 5̣_ 0_ 2_ 1_ 6̣ 1_ 1_ 6̣_ | 1_ 1_ 3_ 2_ 1_ 1_ 0_ 5_ | 6̣_ 3̣ 3_ 3_ 2_ 3_ 3_ 2_ | 3_ 5_ 3_ 3_ 0_ 3_ 3_ 3_ | 2_ 2_ 2_ 2_ 2_ 1_ 3_ 2_. | 0_ 2_ 1_ 6̣ 1_ 1_ 6̣ 1_ | 1_ 6̣_ 5̣_ 0_ 5_ 6̣_ 3̣ 5_ | 5_ 3_ 5_ 5_ 3_ 2_ 1_ 1_ | 0_ 2_ 1_ 2_ 3_ 2_ 2_ 1_ | 2_ 1_ 6̣_ 2_ 1_ 1_ 6̣_ 1_ | 1_ 1_ 1_ 1_ 0_ 5_ 5_ 3_ | 2_ 3_ 6̣_ 2_ 3_ 5_ 3_ 2_ | 0_ 5_ 5_ 3_ 2_ 3_ 5_ 2_ | 3_ 5_ 2_ 1_ 0_ 1_ 2_ 3_ | 5_ 6̣_ 5_ 4_ 5_ 3_ 3_ 2_ | 2_ 0_ 1_ 2_ 1_ 2_ 1_ 2_ | 2_ 3_ 5_ 3_ 3_. 0_ 5_ | 5_ 3_ 2_ 3_ 6̣_ 2_ 3_ 5_ | 3_ 2_ 0_ 5_ 5_ 3_ 2_ 3_ | 5_ 2_ 3_ 5_ 2_ 1_ 0_ 1_ | 2_ 3_ 5_ 6̣_ 5_ 4_ 5_ 3_ | 3_ 3_ 2_ 2_. 5_ 3_ 2_ 2_ | 2_ 1_. 1 - 0_ 2_ | 1_ 6̣ 2_ 1_. 1 - 0_ 5_ | 5_ 3_ 2_ 1_. 1 - 0' },
-        { id: 5, title: '时间煮雨（郁可唯）', key: 'C', time_signature: '4/4', tempo: 86, is_builtin: 1, static_image: 'song-5.png', jianpu: '3 5 6 5 3 2 1 | 3 5 6 5 3 2 3 | 5 6 1̇ 6 5 3 2 1 | 3 5 2 3 2 1 1 - | 1̇ 7 6 5 6 5 3 | 5 6 1̇ 2̇ 1̇ 7 6 - | 1̇ 7 6 5 6 5 3 2 1 | 3 5 2 3 2 1 1 -' },
-        { id: 6, title: '消愁（毛不易）', key: 'Ab', time_signature: '4/4', tempo: 110, is_builtin: 1, static_image: 'song-6.png', jianpu: '1 1 1 6̣ 1 2 3 | 2 2 2 1 2 3 1 - | 3 3 3 2 3 5 6 | 5 5 5 3 5 6 3 - | 6 6 6 5 6 1̇ 2̇ | 1̇ 1̇ 1̇ 6 1̇ 2̇ 6 - | 5 5 5 3 5 6 1̇ 2 | 3 2 1 2 1 - - -' },
-        { id: 7, title: '像我这样的人（毛不易）', key: 'Db', time_signature: '4/4', tempo: 62, is_builtin: 1, static_image: 'song-7.png', jianpu: '1 2 3 5 3 2 1 6̣ | 1 2 3 2 1 2 - - | 1 2 3 5 3 2 1 6̣ | 1 2 3 2 1 1 - - | 3 5 6 1̇ 6 5 3 2 | 1 2 3 2 1 2 - - | 3 5 6 1̇ 6 5 3 2 | 1 2 3 2 1 1 - -' },
-        { id: 8, title: '平凡的一天（毛不易）', key: 'Gb', time_signature: '4/4', tempo: 60, is_builtin: 1, static_image: 'song-8.png', jianpu: '1 2 3 5 5 6 5 3 | 2 3 2 1 2 - - - | 1 2 3 5 5 6 5 3 | 2 3 2 1 1 - - - | 3 5 6 1̇ 1̇ 6 5 3 | 2 3 2 1 2 - - - | 3 5 6 1̇ 1̇ 6 5 3 | 2 3 2 1 1 - - -' },
-        { id: 9, title: '小星星', key: 'C', is_builtin: 1, jianpu: '1 1 5 5 6 6 5 - | 4 4 3 3 2 2 1 - | 5 5 4 4 3 3 2 - | 5 5 4 4 3 3 2 -' },
-        { id: 10, title: '两只老虎', key: 'C', is_builtin: 1, jianpu: '1 2 3 1 | 1 2 3 1 | 3 4 5 - | 3 4 5 - | 5̇ 6 5̇ 4 3 1 | 5̇ 6 5̇ 4 3 1 | 2 5 1 - | 2 5 1 -' },
-        { id: 11, title: '欢乐颂', key: 'C', is_builtin: 1, jianpu: '3 3 4 5 5 4 3 2 | 1 1 2 3 3 2 2 - | 3 3 4 5 5 4 3 2 | 1 1 2 3 2 1 1 -' },
-        { id: 12, title: '生日快乐', key: 'C', is_builtin: 1, jianpu: '5 5 6 5 1̇ 7 | 5 5 6 5 2̇ 1̇ | 5̇ 5̇ 3̇ 1̇ 7 6 | 4̇ 4̇ 3̇ 1̇ 2̇ 1̇' },
-        { id: 13, title: '送别', key: 'C', is_builtin: 1, jianpu: '5 3 5 1̇ - | 7 6 1̇ - | 5 1 2 3 2 1 | 2 - - -' },
-        { id: 14, title: '茉莉花', key: 'C', is_builtin: 1, jianpu: '3 3 5 6 1̇ 1̇ 6 | 5 5 6 5 - | 3 3 5 6 1̇ 1̇ 6 | 5 5 6 5 -' },
-        { id: 15, title: '🎵 时值练习·八分音符', key: 'C', is_builtin: 1, jianpu: '1 2 3 1 1 2 3 1 | 1_ 2_ 3_ 1_ 1_ 2_ 3_ 1_ | 3 4 5 - 3 4 5 - | 3_ 4_ 5_ -_ 3_ 4_ 5_ -_ | 5̇ 6 5̇ 4 3 1 5̇ 6 5̇ 4 3 1 | 5̇_ 6_ 5̇_ 4_ 3_ 1_ 5̇_ 6_ 5̇_ 4_ 3_ 1_ | 2 5 1 - 2 5 1 - | 2_ 5_ 1_ -_ 2_ 5_ 1_ -_' },
-        { id: 16, title: '🎵 时值练习·附点四分音符', key: 'C', is_builtin: 1, jianpu: '1. 1 1. 1 | 5 1. 1 1. | 6. 6 5 3 | 2 1 2 - | 3. 2 1. 5 | 6 5 6 1 | 1 - - -' },
-        { id: 17, title: '🎵 时值练习·十六分音符', key: 'C', is_builtin: 1, jianpu: '1__ 5__ 5__ 1__ 1__ 5__ 5__ 1__ | 5__ 5__ 6__ 5__ 4__ 3__ 2__ 1__ | 1__ 2__ 3__ 4__ 5__ 6__ 7__ 1̇__ | 1̇__ 1̇__ 1̇__ -__ 1̇__ 1̇__ 1̇__ -__ | 1 1 1 - | 3 3 3 - | 2 2 2 - | 1 - - -' },
-        { id: 18, title: '🎵 时值练习·混合时值', key: 'C', is_builtin: 1, jianpu: '1_ 5_ 6 5 | 3. 5 1 2 | 1__ 2__ 3__ 5__ | 1̇ 6 5 3 | 2_ 1_ -_ 5_ | 6 5 3 - | 1 2 3 5 | 5_ 5_ 5_ 3_ | 1 - - -' },
-        { id: 19, title: '匆匆那年（王菲）', key: 'Db', time_signature: '3/4', tempo: 126, is_builtin: 1, static_image: 'song-20.png', jianpu: '3 - 4_3_ | 3. 1_ 2 | 3 2 1 | 2 - - | 1 - 1 | 2. 1_ 2 | 3 - - | 3 - - | 3 - 4_3_ | 3. 1_ 2 | 3 1̇ 7 | 2 - - | 1 - 1 | 2 - 2 | 1̣7̣_ 6̣ - | 6̣ - - | 3_3_ 3_6_ 7_1̇_ | 3_3_ 3_6_ 7_1̇_ | 3_3_ 3_3_ 2_1_ | 6 - - | 1̇_1̇_ 6_7_ 1̇_1̇_ | 2̇_2̇_ 2̇_5̇_ 5̇_5̇_ | 3̇_3̇_ 3̇_2̇_ 1̇ - | 3̇ - - | 3̇_3̇_ 6̇_7̇_ 1̇_1̇_ | 3̇_3̇_ 3̇_2̇_ 1̇ - | 6̇ - - | 1̇_1̇_ 1̇_7_ 6_5_ | 6_6_ 5_4_ 2_4_ | 4_5_ 4_2_ 3_2_ | 3 - - | 2_2_ 1_2_ 2_3_ | 4_2_ 1_3_ 3_2_ | 2_3_ 4_2_ - | 7_7_ 7_6_ 6_5_ | 6_6_ 5_6_ 5_6_ | 7 - - | 3_3_ 3_2_ 1̇_6_ | 1̇_1̇_ 1̇_7_ 6_5_ | 3 - - | 6_5_ 6_7_ 1̇_6_ | 5 - - | 4_5_ 4_3_ 2_1_ | 2_2_ 2_3_ 4_2_ | 3 - - | 1̇_7_ 1̇_7_ 1̇_6_ | 7 - - | 6_5_ 6_5_ 6_1̇_ | 1̇_3̇_ 3̇_4̇_ 3̇_2̇_ | 3̇_2̇_ 3̇_2̇_ 1̇ - | 3̇ - - | 3̇_3̇_ 6̇_7̇_ 1̇_1̇_ | 3̇_3̇_ 3̇_2̇_ 1̇ - | 6̇ - - | 1̇_1̇_ 1̇_7_ 6_5_ | 6_6_ 5_4_ 2_4_ | 4_5_ 4_2_ 3_2_ | 3 - -' },
-        { id: 20, title: '🌟 水星记（郭顶）', key: 'F', time_signature: '4/4', tempo: 67, is_builtin: 1, static_image: 'song-21.png', jianpu: '0 - - - | 0. 5̣_ 3_ 2_ 2__1__ 1_ | 1_ 0._ 5̣__ 3_ 2_ 2__1__ 1_ | 1_ 0._ 5̣__ 3_ 2_ 2__1__ 4_ | 4__ 3__ 0._ 1__ 5_ 3_ 2_ 2__1__. | 1_ 6. 5_ 3_ 2_ 2__1__ 2_ | 2 - 0 0 | 0 - - 0 | 0. 5̣_ 3_ 2_ 2__1__ 1_ | 1_ 0._ 5̣__ 3_ 2_ 2__1__ 1_ | 1_ 0._ 5̣__ 3_ 2_ 2__1__ 4_ | 4__ 3__ 0._ 1__ 5_ 3_ 2_ 2__1__. | 1_ 6. 5_ 3_ 2_ 2__1__ 2_ | 2 - 5_ 3_ 2_ 2__1__ 2_. | 0__ 6̣__5̣__ 5̣ - 0__5̣__ 1_ 2_ | 3. 3_ 3__4__ 3 2 0_ 3_ | 4 3_ 2__2__1__1__ 3_ 3__2__ 2_ | 2 - 2_ 1_ 2_ 1_ | 1 - - - | 0 0 1_ 2_ 3_ 5_ | 6_ 5_ 4_ 6_ 5_ 3_ 6_ | 6 - 6_ 5_ 1̇_ 3_ | 3__2__ 5_ 3_ 2_ 5__3__ | 3 - 1_ 2_ 3_ 5_ | 6_ 5_ 3_ 6_ 5_ 3_ b6 | b6_ 5_ 4_ 4_. 0 1̇ 2̇ 1̇ | 1̇ 5 5_5_3_ 2__1__. | 1 - 1_ 2_ 3_ 1_ | 1̇ 1_. 1_ 2_ 3_ 4_ | 4__3__2__ 2_ 3_ 2_. 1_. | 1 - 0 0 | 0 0 1_ 2_ 3_ 5_ | 6_ 5_ 4_ 6_ 5_ 3_ 6_ | 6 - 6_ 5_ 1̇_ 3_ | 3__2__ 5_ 3_ 2_ 5__3__ | 3 - 1_ 2_ 3_ 5_ | 6_ 5_ 3_ 6_ 5_ 3_ b6 | b6_ 5_ 4_ 4_. 0 1̇ 2̇ 1̇ | 1̇ 5 5_5_1̇ 2̇ 3̇ | 3__2__ 1̇ 1̇ 1̇_ 1̇_ 6_ 5_ | 6_ 5_ 3_ 6_ 5_ 3_ 6_ | 6 - 6_ 5_ 1̇_ 3_ | 3__2__ 5_ 3_ 2__2__1__ | 6 - 1_ 2_ 3_ 1_ | 6̣_ 1̇_. 1_ 2_ 3_ 4__3__ | 2 - 3 2__1__. | 1 - - 0' }
-    ];
+    // 内置曲库的唯一数据源是仓库根目录 songs.json，
+    // 由 tools/build_assets.py 生成 static/js/builtin_songs.js（window.BUILTIN_SONGS_DATA）。
+    var DEFAULT_STATIC_SONGS = window.BUILTIN_SONGS_DATA || [];
 
     var JIANPU_LIBRARY = DEFAULT_STATIC_SONGS;
 
@@ -63,7 +44,8 @@
     var correctCount = 0;
     var totalCount = 0;
     var songNotes = [];   // 当前曲谱解析结果
-    var current = null;   // 当前题：{notes:[{note,octave,midi,src}]}
+    var current = null;     // 当前题的时间轴（可能包含休止符，休止符只占时值不发声）
+    var currentAnswer = []; // 当前题需要作答的音（已剔除休止符）
     var currentSong = null; // 当前加载歌曲的元数据 {key, tempo, timeSignature, title}
     var answered = false;
     var playing = false;
@@ -133,7 +115,7 @@
         var bars = String(text || '').split('|');
         var result = [];
         var ok = true;
-        bars.forEach(function (bar) {
+        bars.forEach(function (bar, barIndex) {
             bar = bar.trim();
             if (!bar) return;
             // 归一化：全角数字、音乐符号、字母 i（高音 1）、字母 o（休止符 0）、中文附点
@@ -155,6 +137,7 @@
                 var note = parseJianpuToken(token);
                 if (note) {
                     note.barText = bar;
+                    note.barIndex = barIndex; // 小节唯一标识：相同文本的小节也不会被合并
                     result.push(note);
                 } else {
                     ok = false;
@@ -218,63 +201,97 @@
 
     // ===== 出题 =====
 
-    // 从曲谱中抽取连续、不含休止符的片段
+    // 将解析后的曲谱按休止符切分为「连续可听片段」：休止符是分句边界，不参与作答
+    function buildPlayableRuns() {
+        var runs = [];
+        var run = [];
+        songNotes.forEach(function (n) {
+            if (n.isRest) {
+                if (run.length) { runs.push(run); run = []; }
+            } else {
+                run.push(n);
+            }
+        });
+        if (run.length) runs.push(run);
+        return runs;
+    }
+
+    // 解析音符 -> 题目用音符对象（休止符保留时值，但不含音高）
+    function toSegmentNote(note) {
+        var midi = note.isRest ? null : jianpuToMidi(note);
+        var playable = midi === null ? null : midiToPlayable(midi);
+        return {
+            isRest: !!note.isRest,
+            degree: note.degree,
+            accidental: note.accidental,
+            octave: note.octave,
+            beats: note.beats || 1.0,
+            barIndex: note.barIndex,
+            isEighth: note.isEighth,
+            isSixteenth: note.isSixteenth,
+            isDotted: note.isDotted,
+            midi: midi,
+            note: playable ? playable.note : null,
+            pcOctave: playable ? playable.octave : null,
+            token: noteToToken(note)
+        };
+    }
+
+    // 从曲谱中抽取片段：按唯一小节抽取，或在单个连续片段内抽取 N 个音
     function pickSegment() {
         var lenSel = document.getElementById('jianpu-length').value;
-        var usable = songNotes.filter(function (n) { return !n.isRest; });
-        if (!usable.length) return null;
 
-        var picked;
         if (lenSel === 'bar') {
-            var barTexts = [];
-            usable.forEach(function (n) {
-                if (barTexts.indexOf(n.barText) === -1) barTexts.push(n.barText);
+            // 按唯一 barIndex 分组，避免两个文本相同的小节被合并抽取
+            var barGroups = {};
+            songNotes.forEach(function (n) {
+                if (n.barIndex === undefined) return;
+                (barGroups[n.barIndex] = barGroups[n.barIndex] || []).push(n);
             });
-            var bar = barTexts[Math.floor(Math.random() * barTexts.length)];
-            picked = usable.filter(function (n) { return n.barText === bar; });
-        } else {
-            var want = parseInt(lenSel, 10);
-            if (usable.length < want) picked = usable.slice();
-            else {
-                var start = Math.floor(Math.random() * (usable.length - want + 1));
-                picked = usable.slice(start, start + want);
-            }
+            var barKeys = Object.keys(barGroups);
+            if (!barKeys.length) return null;
+            // 优先抽取至少含 2 个可作答音的小节
+            var playableKeys = barKeys.filter(function (k) {
+                return barGroups[k].filter(function (n) { return !n.isRest; }).length >= 2;
+            });
+            var pool = playableKeys.length ? playableKeys : barKeys;
+            var bar = pool[Math.floor(Math.random() * pool.length)];
+            return barGroups[bar].map(toSegmentNote);
         }
-        return picked.map(function (note) {
-            var midi = jianpuToMidi(note);
-            var playable = midiToPlayable(midi);
-            return {
-                degree: note.degree,
-                accidental: note.accidental,
-                octave: note.octave,
-                beats: note.beats || 1.0,
-                isEighth: note.isEighth,
-                isSixteenth: note.isSixteenth,
-                isDotted: note.isDotted,
-                midi: midi,
-                note: playable.note,
-                pcOctave: playable.octave,
-                token: noteToToken(note)
-            };
-        });
+
+        // 固定音数：只在单个连续可听片段内取窗口，绝不跨过休止符拼接
+        var want = parseInt(lenSel, 10) || 2;
+        var runs = buildPlayableRuns();
+        if (!runs.length) return null;
+        var candidates = runs.filter(function (r) { return r.length >= want; });
+        var run = candidates.length
+            ? candidates[Math.floor(Math.random() * candidates.length)]
+            : runs.reduce(function (a, b) { return b.length > a.length ? b : a; }, runs[0]);
+        if (run.length < want) want = run.length;
+        var start = Math.floor(Math.random() * (run.length - want + 1));
+        return run.slice(start, start + want).map(toSegmentNote);
     }
 
     // 动态真实节拍发声：根据音符时值（四分/八分/十六分/附点/延音）计算真实毫秒时长
-    function playSegment(notes, force) {
+    function playSegment(notes) {
         if (!window.audioSystem || !notes || !notes.length) return;
-        if (playing && !force) return;
+        // 先停掉上一段（音源 + 未触发定时器），避免重听/下一题时叠音
+        window.audioSystem.stopAll();
         playing = true;
-        var bpm = 82;
+        // 使用当前歌曲自身标注的 tempo，未标注时回退 82 BPM
+        var bpm = (currentSong && currentSong.tempo) || 82;
         var beatMs = 60000 / bpm;
         var t = 0;
         notes.forEach(function (p, i) {
             var b = p.beats || 1.0;
             var durMs = b * beatMs;
-            setTimeout(function () {
-                var playSec = Math.max(0.18, durMs * 0.00085);
-                audioSystem.playNote(p.note, p.pcOctave, playSec);
+            window.audioSystem.scheduleTimer(function () {
+                if (!p.isRest) { // 休止符只占时间轴，不发声
+                    var playSec = Math.max(0.18, durMs * 0.00085);
+                    audioSystem.playNote(p.note, p.pcOctave, playSec);
+                }
                 if (i === notes.length - 1) {
-                    setTimeout(function () { playing = false; }, durMs + 100);
+                    window.audioSystem.scheduleTimer(function () { playing = false; }, durMs + 100);
                 }
             }, t);
             t += durMs;
@@ -313,13 +330,13 @@
         var area = document.getElementById('jianpu-answer-area');
         area.innerHTML = '';
         var difficulty = document.getElementById('jianpu-difficulty').value;
-        userPicks = new Array(current.length).fill(null);
+        userPicks = new Array(currentAnswer.length).fill(null);
 
         if (difficulty === 'contour') {
             // 听走向：每对相邻音一组 ↑ → ↓
             var wrap = document.createElement('div');
             wrap.className = 'jianpu-answer-note-row';
-            for (var i = 1; i < current.length; i++) {
+            for (var i = 1; i < currentAnswer.length; i++) {
                 (function (idx) {
                     var label = document.createElement('span');
                     label.className = 'note-index';
@@ -346,7 +363,7 @@
             area.appendChild(wrap);
         } else if (difficulty === 'degree') {
             // 听唱名：每个音选 1-7
-            current.forEach(function (p, idx) {
+            currentAnswer.forEach(function (p, idx) {
                 var row = document.createElement('div');
                 row.className = 'jianpu-answer-note-row';
 
@@ -375,7 +392,7 @@
             });
         } else {
             // 听写全谱：每个音一个输入框
-            current.forEach(function (p, idx) {
+            currentAnswer.forEach(function (p, idx) {
                 var row = document.createElement('div');
                 row.className = 'jianpu-answer-note-row';
 
@@ -416,12 +433,12 @@
         var userTexts = [];
         var correctTexts = [];
 
-        current.forEach(function (p, idx) {
+        currentAnswer.forEach(function (p, idx) {
             var ok;
             var userText;
             if (difficulty === 'contour') {
                 if (idx === 0) return; // 第一个音无走向
-                var dir = directionOf(p.midi, current[idx - 1].midi);
+                var dir = directionOf(p.midi, currentAnswer[idx - 1].midi);
                 ok = userPicks[idx] === dir;
                 userText = userPicks[idx] ? directionText(userPicks[idx]) : '未作答';
                 correctTexts.push(directionText(dir));
@@ -466,15 +483,20 @@
             return;
         }
         var segment = pickSegment();
-        if (!segment || segment.length < 2) {
+        if (!segment) {
             setStatus('曲谱可用音符太少，无法出题', 'bad');
             return;
         }
-        current = segment;
+        current = segment; // 时间轴（含休止符）
+        currentAnswer = segment.filter(function (n) { return !n.isRest; }); // 需作答的音
+        if (currentAnswer.length < 2) {
+            setStatus('曲谱可用音符太少，无法出题', 'bad');
+            return;
+        }
         lastSegment = segment;
         answered = false;
         document.getElementById('jianpu-reveal').innerHTML = '';
-        setStatus('听这段旋律（共 ' + segment.length + ' 个音）');
+        setStatus('听这段旋律（共 ' + currentAnswer.length + ' 个音）');
         renderAnswers();
         playSegment(segment);
     }
@@ -492,22 +514,27 @@
         }
         if (btn.textContent.indexOf('停止') !== -1) { // 正在弹奏 → 停止
             playAllToken += 1;
+            // 真正停止：关闭当前音源并清除所有未触发的定时回调
+            if (window.audioSystem) window.audioSystem.stopAll();
+            playing = false;
             btn.textContent = '▶ 弹奏整曲';
             if (preview) noteEls().forEach(function(el) { el.classList.remove('playing'); });
             return;
         }
         playAllToken += 1;
         var token = playAllToken;
+        // 开始整曲前先清空上一轮残留
+        if (window.audioSystem) window.audioSystem.stopAll();
         btn.textContent = '■ 停止';
         if (preview) noteEls().forEach(function(el) { el.classList.remove('playing'); });
 
         var t = 0;
-        var bpm = 82; // 默认基准拍速 (约 730ms 每四分音符)
+        var bpm = (currentSong && currentSong.tempo) || 82; // 使用歌曲 tempo，默认约 730ms 每四分音符
         var beatMs = 60000 / bpm;
         songNotes.forEach(function (note, idx) {
             var beats = note.beats || 1.0;
             var noteDurMs = beats * beatMs;
-            setTimeout(function () {
+            window.audioSystem.scheduleTimer(function () {
                 if (token !== playAllToken) return;
                 // 更新高亮跳动光标（SVG 里的数字 text）
                 if (preview) {
@@ -526,7 +553,7 @@
             }, t);
             t += noteDurMs;
         });
-setTimeout(function () {
+window.audioSystem.scheduleTimer(function () {
 if (token === playAllToken) {
 btn.textContent = '▶ 弹奏整曲';
 if (preview) noteEls().forEach(function(el) { el.classList.remove('playing'); });
@@ -814,26 +841,54 @@ var libraryUsesBackend = false;
         } catch (e) {}
     }
 
+    // 把一首歌写入浏览器本地曲库（仅静态部署/网络异常时使用），返回新 id
+    function saveLocalCopy(title, jianpu, key) {
+        var customs = getLocalStorageSongs();
+        var newId = 'local_' + Date.now();
+        customs.push({ id: newId, title: title, jianpu: jianpu, key: key || 'C', is_builtin: 0 });
+        setLocalStorageSongs(customs);
+        return newId;
+    }
+
+    // 从后端错误响应中提取可展示的错误信息
+    function apiError(status, data) {
+        if (data && data.error) return data.error;
+        return '服务器返回错误（HTTP ' + status + '）';
+    }
+
+    // 在页面上明确展示当前曲库数据来源
+    function setLibrarySource(text, kind) {
+        var el = document.getElementById('jianpu-library-source');
+        if (!el) return;
+        el.textContent = text || '';
+        el.classList.remove('ok', 'bad');
+        if (kind) el.classList.add(kind);
+    }
+
     // 从数据库或静态回退曲库异步载入曲库
     function loadLibraryFromDB(selectSongId) {
         return fetch('/api/jianpu/songs')
             .then(function (res) {
-                if (!res.ok) throw new Error('API 不可用');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
                 return res.json();
             })
             .then(function (data) {
-if (data && data.songs && data.songs.length > 0) {
-libraryUsesBackend = true;
-songLibraryList = data.songs;
-} else {
+                if (data && data.songs && data.songs.length > 0) {
+                    libraryUsesBackend = true;
+                    songLibraryList = data.songs;
+                    setLibrarySource('数据来源：服务器数据库（可增删改，多设备共享）', 'ok');
+                } else {
+                    libraryUsesBackend = false;
                     fallbackLocalLibrary();
+                    setLibrarySource('数据来源：浏览器本地（未连接后端，修改仅保存在本机）');
                 }
                 renderLibrarySelect(selectSongId);
             })
-.catch(function () {
-// 静态环境（如 GitHub Pages）或无后端环境时的优雅降级
-libraryUsesBackend = false;
-fallbackLocalLibrary();
+            .catch(function () {
+                // 无后端（如 GitHub Pages 静态部署）时降级到本地曲库
+                libraryUsesBackend = false;
+                fallbackLocalLibrary();
+                setLibrarySource('数据来源：浏览器本地（未检测到后端服务，修改仅保存在本机）');
                 renderLibrarySelect(selectSongId);
             });
     }
@@ -901,10 +956,18 @@ fallbackLocalLibrary();
         var updateBtn = document.getElementById('jianpu-update-btn');
         var val = select.value;
 
-        // 「保存修改到当前歌曲」只在选中曲库歌曲时可用
+        // 「保存修改/另存副本」只在选中曲库歌曲时可用
         if (updateBtn) {
-            var isLibSong = val !== 'custom' && songLibraryList.some(function (s) { return String(s.id) === val; });
+            var selSong = songLibraryList.find(function (s) { return String(s.id) === val; });
+            var isLibSong = val !== 'custom' && !!selSong;
             updateBtn.style.display = isLibSong ? 'inline-block' : 'none';
+            if (isLibSong) {
+                var isBuiltinSong = !!selSong.is_builtin;
+                updateBtn.textContent = isBuiltinSong ? '📄 另存为副本' : '💾 保存修改到当前歌曲';
+                updateBtn.title = isBuiltinSong
+                    ? '内置曲目为只读，将把你的修改另存为一份自建副本'
+                    : '将编辑后的简谱文本保存回当前选中的歌曲';
+            }
         }
 
 if (val === 'custom') {
@@ -997,35 +1060,42 @@ var updateBtn = document.getElementById('jianpu-update-btn');
                     body: JSON.stringify({ title: title, jianpu: jianpu, key: key })
                 })
                     .then(function (res) {
-                        if (!res.ok) throw new Error('API 不可用');
-                        return res.json();
+                        return res.json().then(function (data) { return { ok: res.ok, status: res.status, data: data }; });
                     })
-                    .then(function (data) {
+                    .then(function (result) {
                         saveBtn.disabled = false;
                         saveBtn.textContent = '💾 确认存入数据库';
-                        if (data.error) {
-                            setStatus(data.error, 'bad');
+                        if (!result.ok) {
+                            // 服务器明确报错：展示真实错误，不再伪装成本地保存成功
+                            setStatus(apiError(result.status, result.data), 'bad');
                             return;
                         }
-                        setStatus('歌曲「' + title + '」已成功存入曲库！', 'ok');
+                        setStatus('歌曲「' + title + '」已成功存入服务器曲库！', 'ok');
                         if (saveBar) saveBar.style.display = 'none';
                         document.getElementById('jianpu-custom-title').value = '';
-                        loadLibraryFromDB(data.song.id);
+                        loadLibraryFromDB(result.data.song.id);
                     })
                     .catch(function () {
-                        // 静态部署/前端本地存储回退
-                        var customs = getLocalStorageSongs();
-                        var newId = 'local_' + Date.now();
-                        var newSong = { id: newId, title: title, jianpu: jianpu, key: key, is_builtin: 0 };
-                        customs.push(newSong);
-                        setLocalStorageSongs(customs);
-
                         saveBtn.disabled = false;
                         saveBtn.textContent = '💾 确认存入数据库';
-                        setStatus('已成功保存歌曲「' + title + '」至本地曲库！', 'ok');
-                        if (saveBar) saveBar.style.display = 'none';
-                        document.getElementById('jianpu-custom-title').value = '';
-                        loadLibraryFromDB(newId);
+                        // 仅在确认无后端（静态部署）时才自动保存到本地
+                        if (!libraryUsesBackend) {
+                            var localId = saveLocalCopy(title, jianpu, key);
+                            setStatus('未检测到后端服务，已保存到浏览器本地曲库「' + title + '」', 'ok');
+                            if (saveBar) saveBar.style.display = 'none';
+                            document.getElementById('jianpu-custom-title').value = '';
+                            loadLibraryFromDB(localId);
+                            return;
+                        }
+                        // 后端存在但网络异常：询问用户是否改存本地
+                        if (confirm('保存到服务器失败（网络异常）。是否改存到浏览器本地？\n注意：本地数据仅当前浏览器可见。')) {
+                            saveLocalCopy(title, jianpu, key);
+                            if (saveBar) saveBar.style.display = 'none';
+                            document.getElementById('jianpu-custom-title').value = '';
+                            setStatus('已改存到浏览器本地「' + title + '」（服务器未保存）', 'ok');
+                        } else {
+                            setStatus('保存失败：无法连接服务器，数据未保存', 'bad');
+                        }
                     });
             });
         }
@@ -1045,47 +1115,68 @@ var updateBtn = document.getElementById('jianpu-update-btn');
                     return;
                 }
 
-                updateBtn.disabled = true;
-                updateBtn.textContent = '保存中…';
+                var isBuiltin = !!found.is_builtin;
+                var isLocalSong = String(found.id).indexOf('local_') === 0;
 
-                fetch('/api/jianpu/songs/' + found.id, {
-                    method: 'PUT',
+                // 本地曲库（静态部署）：直接写 localStorage
+                if (isLocalSong || !libraryUsesBackend) {
+                    var customs = getLocalStorageSongs();
+                    var item = customs.find(function (s) { return String(s.id) === String(found.id); });
+                    if (item) {
+                        item.jianpu = jianpu;
+                        setLocalStorageSongs(customs);
+                        found.jianpu = jianpu;
+                        setStatus('已保存修改到浏览器本地曲库「' + found.title + '」！', 'ok');
+                    } else {
+                        setStatus('该曲目不在本地曲库中，且未连接后端，无法保存', 'bad');
+                    }
+                    return;
+                }
+
+                updateBtn.disabled = true;
+                updateBtn.textContent = isBuiltin ? '另存中…' : '保存中…';
+
+                // 内置曲目只读：改为新建一份自建副本；自建曲目直接 PUT
+                var endpoint = isBuiltin ? '/api/jianpu/songs' : ('/api/jianpu/songs/' + found.id);
+                var method = isBuiltin ? 'POST' : 'PUT';
+                var payload = isBuiltin
+                    ? {
+                        title: (found.title || '未命名') + '（副本）',
+                        jianpu: jianpu,
+                        key: found.key || 'C',
+                        time_signature: found.time_signature || '4/4',
+                        tempo: found.tempo || null
+                    }
+                    : { jianpu: jianpu };
+
+                fetch(endpoint, {
+                    method: method,
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ jianpu: jianpu })
+                    body: JSON.stringify(payload)
                 })
                     .then(function (res) {
-                        if (!res.ok) throw new Error('API 不可用');
-                        return res.json();
+                        return res.json().then(function (data) { return { ok: res.ok, status: res.status, data: data }; });
                     })
-                    .then(function (data) {
+                    .then(function (result) {
                         updateBtn.disabled = false;
-                        updateBtn.textContent = '💾 保存修改到当前歌曲';
-                        if (data.error) {
-                            setStatus(data.error, 'bad');
+                        updateBtn.textContent = isBuiltin ? '📄 另存为副本' : '💾 保存修改到当前歌曲';
+                        if (!result.ok) {
+                            setStatus(apiError(result.status, result.data), 'bad');
+                            return;
+                        }
+                        if (isBuiltin) {
+                            setStatus('内置曲目为只读，已另存为副本「' + payload.title + '」', 'ok');
+                            loadLibraryFromDB(result.data.song.id);
                             return;
                         }
                         // 同步本地列表中的谱面，避免切歌后丢失修改
                         found.jianpu = jianpu;
-                        setStatus('歌曲「' + found.title + '」的简谱已更新保存！', 'ok');
+                        setStatus('歌曲「' + found.title + '」的简谱已更新保存到服务器！', 'ok');
                     })
                     .catch(function () {
                         updateBtn.disabled = false;
-                        updateBtn.textContent = '💾 保存修改到当前歌曲';
-                        // 无后端时降级到本地存储（仅自建歌曲）
-                        if (String(found.id).indexOf('local_') === 0) {
-                            var customs = getLocalStorageSongs();
-                            var item = customs.find(function (s) { return String(s.id) === String(found.id); });
-                            if (item) {
-                                item.jianpu = jianpu;
-                                setLocalStorageSongs(customs);
-                                found.jianpu = jianpu;
-                                setStatus('已保存修改到本地曲库「' + found.title + '」！', 'ok');
-                            } else {
-                                setStatus('内置歌曲修改需要后端服务支持，无法保存到本地', 'bad');
-                            }
-                        } else {
-                            setStatus('保存失败：后端服务不可用', 'bad');
-                        }
+                        updateBtn.textContent = isBuiltin ? '📄 另存为副本' : '💾 保存修改到当前歌曲';
+                        setStatus('保存失败：无法连接服务器，修改未保存', 'bad');
                     });
             });
         }
@@ -1103,40 +1194,34 @@ var updateBtn = document.getElementById('jianpu-update-btn');
 
                 delBtn.disabled = true;
 
-                // 如果是本地存储的歌曲或无后端静态环境
-                if (String(curId).indexOf('local_') === 0) {
+                // 本地曲库（静态部署）：只删除浏览器本地记录
+                if (String(curId).indexOf('local_') === 0 || !libraryUsesBackend) {
                     var customs = getLocalStorageSongs();
                     customs = customs.filter(function (s) { return String(s.id) !== String(curId); });
                     setLocalStorageSongs(customs);
                     delBtn.disabled = false;
-                    setStatus('歌曲「' + found.title + '」已从本地曲库删除！', 'ok');
+                    setStatus('歌曲「' + found.title + '」已从浏览器本地曲库删除！', 'ok');
                     loadLibraryFromDB();
                     return;
                 }
 
                 fetch('/api/jianpu/songs/' + curId, { method: 'DELETE' })
                     .then(function (res) {
-                        if (!res.ok) throw new Error('API 不可用');
-                        return res.json();
+                        return res.json().then(function (data) { return { ok: res.ok, status: res.status, data: data }; });
                     })
-                    .then(function (data) {
+                    .then(function (result) {
                         delBtn.disabled = false;
-                        if (data.error) {
-                            setStatus(data.error, 'bad');
+                        if (!result.ok) {
+                            // 服务器删除失败：展示真实错误，不能只删本地记录
+                            setStatus(apiError(result.status, result.data), 'bad');
                             return;
                         }
-                        setStatus('歌曲「' + found.title + '」已成功删除！', 'ok');
-                        // 重新加载曲库
+                        setStatus('歌曲「' + found.title + '」已从服务器删除！', 'ok');
                         loadLibraryFromDB();
                     })
                     .catch(function () {
-                        // 降级检查 localStorage
-                        var customs = getLocalStorageSongs();
-                        customs = customs.filter(function (s) { return String(s.id) !== String(curId); });
-                        setLocalStorageSongs(customs);
                         delBtn.disabled = false;
-                        setStatus('歌曲「' + found.title + '」已从本地存储删除！', 'ok');
-                        loadLibraryFromDB();
+                        setStatus('删除失败：无法连接服务器，记录未删除', 'bad');
                     });
             });
         }
@@ -1169,6 +1254,7 @@ var updateBtn = document.getElementById('jianpu-update-btn');
             baseMidi = BASE_MIDI; // 手动解析/切换曲库时回到 1=C
             if (loadSource(false)) {
                 current = null;
+                currentAnswer = [];
                 document.getElementById('jianpu-answer-area').innerHTML = '';
                 document.getElementById('jianpu-reveal').innerHTML = '';
                 answered = false;
@@ -1176,7 +1262,7 @@ var updateBtn = document.getElementById('jianpu-update-btn');
         });
         document.getElementById('jianpu-new').addEventListener('click', nextQuestion);
         document.getElementById('jianpu-replay').addEventListener('click', function () {
-            if (lastSegment) playSegment(lastSegment, true);
+            if (lastSegment) playSegment(lastSegment);
         });
         document.getElementById('jianpu-difficulty').addEventListener('change', function () {
             if (current && !answered) {

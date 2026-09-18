@@ -52,3 +52,8 @@ coverage.xml
 *.tmp
 *.temp
 .cache/
+
+# Local song database：运行时按 songs.json 播种生成，不进入版本库
+*.db
+*.sqlite3
+/jianpu_library.db

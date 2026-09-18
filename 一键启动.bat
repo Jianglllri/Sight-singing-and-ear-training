@@ -33,32 +33,26 @@ if not exist "%VENV%\Scripts\python.exe" (
         exit /b 1
     )
     echo [OK] Virtual environment created
-
-    echo.
-    echo [2/2] Installing dependencies...
-    call "%VENV%\Scripts\activate.bat"
-    pip install -r "%~dp0requirements.txt" -i https://pypi.tuna.tsinghua.edu.cn/simple
-    if errorlevel 1 (
-        echo [WARN] Tsinghua mirror failed, trying default...
-        pip install -r "%~dp0requirements.txt"
-        if errorlevel 1 (
-            echo [ERROR] Failed to install dependencies.
-            pause
-            exit /b 1
-        )
-    )
-    echo [OK] Dependencies installed
-    echo.
-    echo ================================
-    echo   Setup Complete!
-    echo ================================
-    echo.
-) else (
-    call "%VENV%\Scripts\activate.bat"
-    echo [OK] Environment ready, starting...
     echo.
 )
 
+rem 每次启动都同步依赖：旧环境也能随 requirements.txt 更新（已满足时几乎是空操作）
+echo [1/2] Checking dependencies (pip install -r requirements.txt)...
+call "%VENV%\Scripts\activate.bat"
+pip install -r "%~dp0requirements.txt" -i https://pypi.tuna.tsinghua.edu.cn/simple
+if errorlevel 1 (
+    echo [WARN] Tsinghua mirror failed, trying default...
+    pip install -r "%~dp0requirements.txt"
+    if errorlevel 1 (
+        echo [ERROR] Failed to install dependencies.
+        pause
+        exit /b 1
+    )
+)
+echo [OK] Dependencies ready
+echo.
+
+echo [2/2] Starting server...
 start "Sound Training Server" cmd /c "cd /d "%~dp0" && title Sound Training - Server && "%VENV%\Scripts\python.exe" app.py"
 
 echo Waiting for server to start...
@@ -70,11 +64,11 @@ echo.
 echo ================================
 echo   Server is running!
 echo.
-echo   Home:   http://127.0.0.1:5000
-echo   C Major: http://127.0.0.1:5000/c_major_scale
-echo   Scale:   http://127.0.0.1:5000/natural_scale_training
-echo   Free:    http://127.0.0.1:5000/free_training
-echo   Piano:   http://127.0.0.1:5000/piano_test
+echo   Home:        http://127.0.0.1:5000
+echo   C Major:     http://127.0.0.1:5000/c_major_scale
+echo   Pitch:       http://127.0.0.1:5000/pitch_training
+echo   Jianpu:      http://127.0.0.1:5000/jianpu_training
+echo   Piano:       http://127.0.0.1:5000/piano_simulator
 echo.
 echo   Close "Sound Training - Server" window to stop.
 echo ================================

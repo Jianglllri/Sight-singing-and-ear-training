@@ -321,24 +321,9 @@
         document.getElementById('pitch-summary').innerHTML = '';
     }
 
-    function octaveAnswerText(pair) {
-        const direction = pair.octaveDirection === 'high' ? '高八度' : '低八度';
-        return direction + '：' + uniquePairLabel(pair.first, pair.second);
-    }
-
-    function makeOctaveOptions(pair) {
-        const options = new Set([octaveAnswerText(pair)]);
-        let guard = 0;
-        while (options.size < 4 && guard < 40) {
-            const low = randomInt(MIDI_MIN, MIDI_MAX - 12);
-            const direction = Math.random() < 0.5 ? 'high' : 'low';
-            const distractor = direction === 'high'
-                ? { first: midiToPitch(low), second: midiToPitch(low + 12), octaveDirection: 'high' }
-                : { first: midiToPitch(low + 12), second: midiToPitch(low), octaveDirection: 'low' };
-            options.add(octaveAnswerText(distractor));
-            guard += 1;
-        }
-        return shuffle(Array.from(options));
+    // 八度题：只判断第二个音是高八度还是低八度，具体音名答题后揭示
+    function octaveDirectionText(pair) {
+        return pair.octaveDirection === 'high' ? '第二个音高八度' : '第二个音低八度';
     }
 
     function correctAnswerText() {
@@ -353,7 +338,7 @@
             return stepName(currentGap());
         }
         if (mode === 'octave') {
-            return octaveAnswerText(current);
+            return octaveDirectionText(current);
         }
         return uniquePairLabel(current.first, current.second);
     }
@@ -491,163 +476,78 @@
         });
     }
 
-    // 渲染走向题答题区（方案 A：空间音高阶梯矩阵 + 实时平滑连线波形）
+    // 渲染走向题答题区：每一对相邻音直接选择 ↑ / → / ↓，确保任意旋律都有唯一正确答案
     function renderContourAnswers(area) {
+        const notes = current.notes;
+        const pairCount = notes.length - 1;
+        const picks = new Array(pairCount).fill(null); // 第 i 对：notes[i] → notes[i+1]
+
         const container = document.createElement('div');
-        container.className = 'contour-matrix-container';
+        container.className = 'contour-arrow-container';
 
-        const board = document.createElement('div');
-        board.className = 'contour-matrix-board';
+        const rows = [];
+        for (let p = 0; p < pairCount; p++) {
+            const row = document.createElement('div');
+            row.className = 'contour-arrow-row';
 
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('class', 'contour-wave-svg');
-        board.appendChild(svg);
+            const label = document.createElement('span');
+            label.className = 'note-index';
+            label.textContent = (p + 1) + '→' + (p + 2);
+            row.appendChild(label);
 
-        const colsWrap = document.createElement('div');
-        colsWrap.className = 'contour-matrix-cols';
-
-        const notesCount = current.notes.length;
-        // 用户选中的每个音的高低等级：3=高，2=中，1=低，未选为 null
-        const userLevels = new Array(notesCount).fill(null);
-
-        // 重新绘制连线函数
-        function redrawWave(isFinalResult = false, isOk = false) {
-            svg.innerHTML = '';
-            const points = [];
-            colsWrap.querySelectorAll('.contour-matrix-col').forEach(function(col, idx) {
-                const activeBtn = col.querySelector('.contour-level-btn.active');
-                if (activeBtn) {
-                    const boardRect = board.getBoundingClientRect();
-                    const btnRect = activeBtn.getBoundingClientRect();
-                    const x = btnRect.left - boardRect.left + btnRect.width / 2;
-                    const y = btnRect.top - boardRect.top + btnRect.height / 2;
-                    points.push({ x, y, level: userLevels[idx] });
-                }
-            });
-
-            if (points.length < 2) return;
-
-            // 绘制平滑贝塞尔曲线
-            let d = `M ${points[0].x} ${points[0].y}`;
-            for (let i = 1; i < points.length; i++) {
-                const p0 = points[i - 1];
-                const p1 = points[i];
-                const cx = (p0.x + p1.x) / 2;
-                d += ` C ${cx} ${p0.y}, ${cx} ${p1.y}, ${p1.x} ${p1.y}`;
-            }
-
-            const strokeColor = isFinalResult ? (isOk ? '#10b981' : '#ef4444') : '#b03a6b';
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', d);
-            path.setAttribute('fill', 'none');
-            path.setAttribute('stroke', strokeColor);
-            path.setAttribute('stroke-width', '4');
-            path.setAttribute('stroke-linecap', 'round');
-            path.setAttribute('style', `filter: drop-shadow(0 0 6px ${strokeColor}88);`);
-            svg.appendChild(path);
-
-            // 如果答错，叠加绘制绿色虚线标出真实旋律走势！
-            if (isFinalResult && !isOk) {
-                const midis = current.notes.map(n => n.midi);
-                const minM = Math.min(...midis);
-                const maxM = Math.max(...midis);
-                const truePoints = [];
-                colsWrap.querySelectorAll('.contour-matrix-col').forEach(function(col, idx) {
-                    const colRect = col.getBoundingClientRect();
-                    const boardRect = board.getBoundingClientRect();
-                    const x = colRect.left - boardRect.left + colRect.width / 2;
-                    const norm = (maxM === minM) ? 0.5 : (midis[idx] - minM) / (maxM - minM);
-                    const y = 160 - norm * (160 - 35);
-                    truePoints.push({ x, y });
-                });
-
-                let dTrue = `M ${truePoints[0].x} ${truePoints[0].y}`;
-                for (let i = 1; i < truePoints.length; i++) {
-                    const p0 = truePoints[i - 1];
-                    const p1 = truePoints[i];
-                    const cx = (p0.x + p1.x) / 2;
-                    dTrue += ` C ${cx} ${p0.y}, ${cx} ${p1.y}, ${p1.x} ${p1.y}`;
-                }
-                const pathTrue = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                pathTrue.setAttribute('d', dTrue);
-                pathTrue.setAttribute('fill', 'none');
-                pathTrue.setAttribute('stroke', '#10b981');
-                pathTrue.setAttribute('stroke-width', '3');
-                pathTrue.setAttribute('stroke-dasharray', '6 4');
-                pathTrue.setAttribute('stroke-linecap', 'round');
-                svg.appendChild(pathTrue);
-            }
-        }
-
-        // 生成 N 列矩阵按钮
-        for (let i = 0; i < notesCount; i++) {
-            const col = document.createElement('div');
-            col.className = 'contour-matrix-col';
-
-            const title = document.createElement('div');
-            title.className = 'contour-col-title';
-            title.textContent = `音 ${i + 1}`;
-            col.appendChild(title);
-
-            [
-                { lvl: 3, label: '高 🔴', cls: 'lvl-high' },
-                { lvl: 2, label: '中 🟡', cls: 'lvl-mid' },
-                { lvl: 1, label: '低 🟢', cls: 'lvl-low' }
-            ].forEach(function(opt) {
+            [['up', '↑'], ['flat', '→'], ['down', '↓']].forEach(function (opt) {
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.className = `contour-level-btn ${opt.cls}`;
-                btn.textContent = opt.label;
-                btn.addEventListener('click', function() {
+                btn.className = 'btn btn-outline-primary pitch-choice-btn';
+                btn.textContent = opt[1];
+                btn.addEventListener('click', function () {
                     if (answered) return;
-                    userLevels[i] = opt.lvl;
-                    col.querySelectorAll('.contour-level-btn').forEach(b => b.classList.toggle('active', b === btn));
-                    setTimeout(() => redrawWave(false), 20);
+                    picks[p] = opt[0];
+                    row.querySelectorAll('button').forEach(function (b) {
+                        b.classList.toggle('active', b === btn);
+                    });
                 });
-                col.appendChild(btn);
+                row.appendChild(btn);
             });
 
-            colsWrap.appendChild(col);
+            rows.push(row);
+            container.appendChild(row);
         }
-
-        board.appendChild(colsWrap);
-        container.appendChild(board);
 
         const tip = document.createElement('div');
         tip.className = 'contour-matrix-tip';
-        tip.textContent = '👆 请依次点选每个音在你感知中的空间高度（高/中/低），波形线将实时平滑连线';
+        tip.textContent = '👆 请为每一对相邻音选择走向：↑ 升、→ 平（同音）、↓ 降';
         container.appendChild(tip);
 
-        // 提交按钮
         const submitBtn = document.createElement('button');
         submitBtn.className = 'btn btn-primary';
         submitBtn.style.marginTop = '0.9rem';
         submitBtn.textContent = '提交旋律走向';
-        submitBtn.addEventListener('click', function() {
+        submitBtn.addEventListener('click', function () {
             if (answered) return;
-            if (userLevels.some(lvl => lvl === null)) {
-                setStatus('请先点选每一个音的高低位置再提交！', 'bad');
+            if (picks.some(function (v) { return v === null; })) {
+                setStatus('请为每一对相邻音都选择走向再提交！', 'bad');
                 return;
             }
 
-            // 科学判定旋律起伏趋势：比对每一对相邻音的变化符号（升/平/降）
-            const realNotes = current.notes;
+            const dirs = contourDirections(notes); // dirs[i] 对应 notes[i] → notes[i+1]
             let ok = true;
-            for (let i = 1; i < notesCount; i++) {
-                const realDiff = realNotes[i].midi - realNotes[i - 1].midi;
-                const userDiff = userLevels[i] - userLevels[i - 1];
-                const realSign = realDiff > 0 ? 1 : realDiff < 0 ? -1 : 0;
-                const userSign = userDiff > 0 ? 1 : userDiff < 0 ? -1 : 0;
-                if (realSign !== userSign) {
-                    ok = false;
-                    break;
-                }
+            for (let i = 0; i < pairCount; i++) {
+                if (picks[i] !== dirs[i]) { ok = false; break; }
             }
 
-            const levelNames = { 3: '高', 2: '中', 1: '低' };
-            const userStr = userLevels.map(lvl => levelNames[lvl]).join(' → ');
-            redrawWave(true, ok);
-            recordResult(ok, userStr);
+            // 答题后在按钮上一次性标出正确答案，便于对照
+            rows.forEach(function (row, i) {
+                row.querySelectorAll('button').forEach(function (b) {
+                    b.disabled = true;
+                    if (b.textContent === contourDirText(dirs[i])) {
+                        b.classList.remove('btn-outline-primary');
+                        b.classList.add('btn-success');
+                    }
+                });
+            });
+
+            recordResult(ok, picks.map(contourDirText).join(' '));
         });
         container.appendChild(submitBtn);
 
@@ -665,24 +565,24 @@
         }
 
         if (mode === 'octave') {
-            const correctText = octaveAnswerText(current);
-            makeOctaveOptions(current).forEach(function (label) {
+            const correctText = octaveDirectionText(current);
+            [['high', '第二个音高八度'], ['low', '第二个音低八度']].forEach(function (opt) {
                 const btn = document.createElement('button');
                 btn.className = 'btn btn-outline-primary pitch-choice-btn';
-                btn.textContent = label;
+                btn.textContent = opt[1];
                 btn.addEventListener('click', function () {
-                    const isOk = (label === correctText);
+                    const isOk = (opt[0] === current.octaveDirection);
+                    btn.classList.remove('btn-outline-primary');
+                    btn.classList.add(isOk ? 'btn-success' : 'btn-danger');
                     if (!isOk) {
-                        btn.classList.remove('btn-outline-primary');
-                        btn.classList.add('btn-danger');
+                        area.querySelectorAll('button').forEach(function (b) {
+                            if (b.textContent === correctText) {
+                                b.classList.remove('btn-outline-primary');
+                                b.classList.add('btn-success');
+                            }
+                        });
                     }
-                    area.querySelectorAll('button').forEach(function(b) {
-                        if (b.textContent === correctText) {
-                            b.classList.remove('btn-outline-primary');
-                            b.classList.add('btn-success');
-                        }
-                    });
-                    recordResult(isOk, label);
+                    recordResult(isOk, opt[1]);
                 });
                 area.appendChild(btn);
             });

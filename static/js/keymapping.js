@@ -127,6 +127,51 @@ const keyMapping = [
     { index: 87, keyType: 'white', noteName: 'C', octave: 8, scientific: 'C8', alternateNames: ['B#7', 'D𝄫8'], frequency: 4186.01, audioFile: 'c5.mp3', midiNumber: 108, isAccidental: false }
 ];
 
+// 等音名称按 MIDI 值自动生成，避免手工维护出错（例如把 G# 的等音误写成 F𝄪）。
+// 规则：字母 + 变音记号 + 八度，计算出的 MIDI 必须与主音名完全一致。
+(function regenerateEnharmonicNames() {
+    const LETTER_SEMITONE = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+    const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+    const ACCIDENTALS = [
+        { symbol: '#', value: 1 },
+        { symbol: '𝄪', value: 2 },
+        { symbol: 'b', value: -1 },
+        { symbol: '𝄫', value: -2 }
+    ];
+    const ACCIDENTAL_VALUE = { '#': 1, '𝄪': 2, 'b': -1, '𝄫': -2 };
+
+    function scientificToMidi(name) {
+        const match = /^([A-G])(𝄪|𝄫|#|b)?(-?\d+)$/.exec(name);
+        if (!match) return null;
+        return 12 * (parseInt(match[3], 10) + 1) + LETTER_SEMITONE[match[1]] + (ACCIDENTAL_VALUE[match[2]] || 0);
+    }
+
+    keyMapping.forEach(key => {
+        const names = new Set();
+        for (let octave = key.octave - 1; octave <= key.octave + 1; octave++) {
+            LETTERS.forEach(letter => {
+                ACCIDENTALS.forEach(accidental => {
+                    const candidate = letter + accidental.symbol + octave;
+                    if (scientificToMidi(candidate) === key.midiNumber) {
+                        names.add(candidate);
+                    }
+                });
+            });
+        }
+        names.delete(key.scientific);
+        key.alternateNames = Array.from(names);
+    });
+
+    // 自检：任何等音名称的 MIDI 都必须与主音名一致，否则立即报错，防止错误别名污染映射表
+    keyMapping.forEach(key => {
+        [key.scientific].concat(key.alternateNames).forEach(name => {
+            if (scientificToMidi(name) !== key.midiNumber) {
+                throw new Error('等音映射错误：' + name + ' 与 ' + key.scientific + ' 的 MIDI 不一致');
+            }
+        });
+    });
+})();
+
 // 创建科学记号法到键映射的快速查找表
 const scientificToKeyMap = {};
 keyMapping.forEach(key => {

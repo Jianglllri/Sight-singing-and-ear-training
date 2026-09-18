@@ -1008,6 +1008,33 @@ section.container {
         border-color: #b03a6b;
         color: #fff;
     }
+
+    /* 音高走向题：逐对相邻音 ↑ / → / ↓ 按钮 */
+    .contour-arrow-container {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        margin-top: 0.6rem;
+    }
+
+    .contour-arrow-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+
+    .contour-arrow-row .pitch-choice-btn.active {
+        background-color: #b03a6b;
+        border-color: #b03a6b;
+        color: #fff;
+    }
+
+    .contour-arrow-container .contour-matrix-tip {
+        margin-top: 0.5rem;
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
     
     /* 滚动条整体美化（简谱图片预览等局部滚动区） */
     .jianpu-image-view::-webkit-scrollbar {

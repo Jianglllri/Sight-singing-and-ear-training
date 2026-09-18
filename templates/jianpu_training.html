@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>简谱听写 - 听音训练</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
         /* 页面背景：Kitty 唱歌插画 + 白色柔光，与全站统一 */
@@ -395,6 +395,7 @@ cursor: pointer;
                 <div class="mt-2 d-flex align-items-center gap-2 flex-wrap">
                     <select id="jianpu-song" class="form-select" style="max-width: 260px;"></select>
                     <button class="btn btn-outline-danger btn-sm" id="jianpu-delete-btn" style="display: none;" title="从数据库中删除当前自建曲目">🗑️ 删除此曲</button>
+                    <small id="jianpu-library-source" class="text-muted"></small>
                 </div>
                 
                 <!-- 自建简谱保存入库工具条 -->
@@ -466,7 +467,7 @@ cursor: pointer;
                 <textarea id="jianpu-text" spellcheck="false" placeholder="在此输入简谱记号，或选择上方经典曲目..."></textarea>
 <div class="jianpu-actions">
 <button class="btn btn-outline-primary" id="jianpu-load">解析曲谱</button>
-<button class="btn btn-success btn-sm" id="jianpu-update-btn" title="将编辑后的简谱文本保存回当前选中的歌曲（含内置歌曲）">💾 保存修改到当前歌曲</button>
+<button class="btn btn-success btn-sm" id="jianpu-update-btn" title="内置曲目另存为副本；自建曲目直接保存修改">💾 保存修改到当前歌曲</button>
 <button class="btn btn-outline-success btn-sm" id="jianpu-toggle-save">＋ 存为新歌曲到曲库</button>
 </div>
                 <!-- SVG 矢量简谱预览：唯一的谱面预览（带下划线/高低音点/调号头部） -->
@@ -565,11 +566,13 @@ cursor: pointer;
         </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script>window.bootstrap || document.write('<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"><\/script>');</script>
     <script src="{{ url_for('static', filename='js/keymapping.js') }}"></script>
     <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     <script src="{{ url_for('static', filename='js/jianpu_svg_render.js') }}"></script>
+<script src="{{ url_for('static', filename='js/builtin_songs.js') }}"></script>
 <script src="{{ url_for('static', filename='js/jianpu_training.js') }}"></script>
 </body>
 </html>

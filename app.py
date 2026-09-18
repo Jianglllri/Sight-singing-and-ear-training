@@ -1,147 +1,98 @@
 import io
+import json
 import os
 import re
 import shutil
 import sqlite3
+from functools import wraps
 
 from flask import Flask, render_template, request, jsonify, send_file
 
-app = Flask(__name__)
+try:
+    from PIL import Image
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
 
 # OCR 依赖为可选：未安装时接口返回明确提示，不影响其它功能
 try:
     import pytesseract
-    from PIL import Image
-    OCR_AVAILABLE = shutil.which('tesseract') is not None
+    OCR_AVAILABLE = PIL_AVAILABLE and shutil.which('tesseract') is not None
 except ImportError:
     OCR_AVAILABLE = False
 
-# ==================== 简谱持久化曲库数据库（SQLite） ====================
-DATABASE_PATH = os.path.join(os.path.dirname(__file__), 'jianpu_library.db')
-MAX_SONG_IMAGE_BYTES = 8 * 1024 * 1024
-ALLOWED_SONG_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
+app = Flask(__name__)
 
-BUILTIN_SONGS = [
-    {
-        'title': '两难（加木）',
-        'key': 'C',
-        'jianpu': '0 0 0 6 5 6 6 | 6 3 2 3 3 4 5 5 | 5 3 2 3 3 3 2 3 2 3 | 6 7 1 5 5 5 5 | 6 7 1 6 6 6 5 6 6 | 6 3 2 3 3 4 5 5 | 5 3 2 3 3 3 2 3 2 3 | 6 7 1 5 5 5 5 | 6 7 1 1̇ 1̇ 7 6 3 | 6 6 3 3 3 3 3 3 2 3 2 | 3 3 3 3 3 3 3 2 3. 6 | 6 1 6 1 3 3 2 3 2 3 | 3 3 3 2 3 0 2 3 3 | 6 6 3 3 3 1 2 1 2 | 6̣. 3 3 5 5 1 2 1 2 | 6̣. 3 3 5 5 1 2 1 2 | 6 3 3 3 5 3 5 3 1 1 | 1 1 5 3 1 1 1 1̣ 3 | 0 1 1 1'
-    },
-    {
-        'title': '问风（金渔）',
-        'key': 'Ab',
-        'time_signature': '4/4',
-        'tempo': 125,
-        'jianpu': '6̣ 3 2 3 6̣ 3 2 3 | 6̣ 3 2 3 7̣ 3 2 3 | 7̣ 1 7̣ 5̣ 3 2 3 5 | 3 2 3 5 1 7 1 2 | 3 2 3 2 3 3 2 | 3 2 3 3 2 3 5 | 3 6̣ - - | 3 2 3 2 3 3 2 | 3 2 3 3 2 3 5 | 5 6̣ 6̣ - - | 1̇ 6 6 5 3 | 5 3 2 3 3 2 1 | 2 2 2 3 3 - | 6̣ 6̣ 6̣ 6̣ 6̣ 6̣ | 5 5 5 5 1 7 6 | 6̣ - - - | 3 6̣ 5 6̣ 5 6̣ 5 | 6̣ - 6 6 6 6 | 3 6̣ 5 6̣ 5 6̣ 5 | 3 - 6 6 6 6 | 3 6̣ 3 6 | 2 1 2 1 2 3 | 2 1 6̣ - - -'
-    },
-    {
-        'title': '暖暖（梁静茹）',
-        'key': 'B',
-        'jianpu': '2 3 3 2 3 3 | 2 3 5 3 1 1 5 | 6̣. 3 2 1 2 | 3 - 0 5 1 2 | 2 3 3 2 3 3 | 2 3 5 3 1 1 7 6̣ | 3 2 1 2 1 - - | 1 7 6̣ 1 2 1 2 | 3 5 2 3 1 1 7 6 | 1 2 3 2 1 2 | 3 - 1 7 | 6 1 2 3 2 1 2 | 3 5 5 3 6 3 2 1. | 3 2 2 1 2 1 - 0 1 3 4 | 5 1 3 4 5 6 7 | 1̇ 3 3 4 5 - 6 | 5 4 5 1 6 6 7 1̇ | 7 5 3 4 5 6 7 | 1 7 6 5 - | 4 5 6 4 5 1̇ | 1̇ 7 5 1 3 2 1 | 1 - - -'
-    },
-    {
-        'title': '青花瓷（周杰伦）',
-        'key': 'A',
-        'time_signature': '4/4',
-        'jianpu': '0_ 2_ 1_ 6̣ | 1_ 1_ 6̣_ 1_ 1_ 6̣_ 1_ 6̣_ | 5̣_ 0_ 2_ 1_ 6̣ 1_ 1_ 6̣_ | 1_ 1_ 3_ 2_ 1_ 1_ 0_ 5_ | 6̣_ 3̣ 3_ 3_ 2_ 3_ 3_ 2_ | 3_ 5_ 3_ 3_ 0_ 3_ 3_ 3_ | 2_ 2_ 2_ 2_ 2_ 1_ 3_ 2_. | 0_ 2_ 1_ 6̣ 1_ 1_ 6̣ 1_ | 1_ 6̣_ 5̣_ 0_ 5_ 6̣_ 3̣ 5_ | 5_ 3_ 5_ 5_ 3_ 2_ 1_ 1_ | 0_ 2_ 1_ 2_ 3_ 2_ 2_ 1_ | 2_ 1_ 6̣_ 2_ 1_ 1_ 6̣_ 1_ | 1_ 1_ 1_ 1_ 0_ 5_ 5_ 3_ | 2_ 3_ 6̣_ 2_ 3_ 5_ 3_ 2_ | 0_ 5_ 5_ 3_ 2_ 3_ 5_ 2_ | 3_ 5_ 2_ 1_ 0_ 1_ 2_ 3_ | 5_ 6̣_ 5_ 4_ 5_ 3_ 3_ 2_ | 2_ 0_ 1_ 2_ 1_ 2_ 1_ 2_ | 2_ 3_ 5_ 3_ 3_. 0_ 5_ | 5_ 3_ 2_ 3_ 6̣_ 2_ 3_ 5_ | 3_ 2_ 0_ 5_ 5_ 3_ 2_ 3_ | 5_ 2_ 3_ 5_ 2_ 1_ 0_ 1_ | 2_ 3_ 5_ 6̣_ 5_ 4_ 5_ 3_ | 3_ 3_ 2_ 2_. 5_ 3_ 2_ 2_ | 2_ 1_. 1 - 0_ 2_ | 1_ 6̣ 2_ 1_. 1 - 0_ 5_ | 5_ 3_ 2_ 1_. 1 - 0'
-    },
-    {
-        'title': '时间煮雨（郁可唯）',
-        'key': 'C',
-        'time_signature': '4/4',
-        'tempo': 86,
-        'jianpu': '3 5 6 5 3 2 1 | 3 5 6 5 3 2 3 | 5 6 1̇ 6 5 3 2 1 | 3 5 2 3 2 1 1 - | 1̇ 7 6 5 6 5 3 | 5 6 1̇ 2̇ 1̇ 7 6 - | 1̇ 7 6 5 6 5 3 2 1 | 3 5 2 3 2 1 1 -'
-    },
-    {
-        'title': '消愁（毛不易）',
-        'key': 'Ab',
-        'time_signature': '4/4',
-        'tempo': 110,
-        'jianpu': '1 1 1 6̣ 1 2 3 | 2 2 2 1 2 3 1 - | 3 3 3 2 3 5 6 | 5 5 5 3 5 6 3 - | 6 6 6 5 6 1̇ 2̇ | 1̇ 1̇ 1̇ 6 1̇ 2̇ 6 - | 5 5 5 3 5 6 1̇ 2 | 3 2 1 2 1 - - -'
-    },
-    {
-        'title': '像我这样的人（毛不易）',
-        'key': 'Db',
-        'time_signature': '4/4',
-        'tempo': 62,
-        'jianpu': '1 2 3 5 3 2 1 6̣ | 1 2 3 2 1 2 - - | 1 2 3 5 3 2 1 6̣ | 1 2 3 2 1 1 - - | 3 5 6 1̇ 6 5 3 2 | 1 2 3 2 1 2 - - | 3 5 6 1̇ 6 5 3 2 | 1 2 3 2 1 1 - -'
-    },
-    {
-        'title': '平凡的一天（毛不易）',
-        'key': 'Gb',
-        'time_signature': '4/4',
-        'tempo': 60,
-        'jianpu': '1 2 3 5 5 6 5 3 | 2 3 2 1 2 - - - | 1 2 3 5 5 6 5 3 | 2 3 2 1 1 - - - | 3 5 6 1̇ 1̇ 6 5 3 | 2 3 2 1 2 - - - | 3 5 6 1̇ 1̇ 6 5 3 | 2 3 2 1 1 - - -'
-    },
-    {
-        'title': '小星星',
-        'key': 'C',
-        'jianpu': '1 1 5 5 6 6 5 - | 4 4 3 3 2 2 1 - | 5 5 4 4 3 3 2 - | 5 5 4 4 3 3 2 -'
-    },
-    {
-        'title': '两只老虎',
-        'key': 'C',
-        'jianpu': '1 2 3 1 | 1 2 3 1 | 3 4 5 - | 3 4 5 - | 5̇ 6 5̇ 4 3 1 | 5̇ 6 5̇ 4 3 1 | 2 5 1 - | 2 5 1 -'
-    },
-    {
-        'title': '欢乐颂',
-        'key': 'C',
-        'jianpu': '3 3 4 5 5 4 3 2 | 1 1 2 3 3 2 2 - | 3 3 4 5 5 4 3 2 | 1 1 2 3 2 1 1 -'
-    },
-    {
-        'title': '生日快乐',
-        'key': 'C',
-        'jianpu': '5 5 6 5 1̇ 7 | 5 5 6 5 2̇ 1̇ | 5̇ 5̇ 3̇ 1̇ 7 6 | 4̇ 4̇ 3̇ 1̇ 2̇ 1̇'
-    },
-    {
-        'title': '送别',
-        'key': 'C',
-        'jianpu': '5 3 5 1̇ - | 7 6 1̇ - | 5 1 2 3 2 1 | 2 - - -'
-    },
-    {
-        'title': '茉莉花',
-        'key': 'C',
-        'jianpu': '3 3 5 6 1̇ 1̇ 6 | 5 5 6 5 - | 3 3 5 6 1̇ 1̇ 6 | 5 5 6 5 -'
-    },
-    {
-        'title': '🎵 时值练习·八分音符',
-        'key': 'C',
-        'jianpu': '1 2 3 1 1 2 3 1 | 1_ 2_ 3_ 1_ 1_ 2_ 3_ 1_ | 3 4 5 - 3 4 5 - | 3_ 4_ 5_ -_ 3_ 4_ 5_ -_ | 5̇ 6 5̇ 4 3 1 5̇ 6 5̇ 4 3 1 | 5̇_ 6_ 5̇_ 4_ 3_ 1_ 5̇_ 6_ 5̇_ 4_ 3_ 1_ | 2 5 1 - 2 5 1 - | 2_ 5_ 1_ -_ 2_ 5_ 1_ -_'
-    },
-    {
-        'title': '🎵 时值练习·附点四分音符',
-        'key': 'C',
-        'jianpu': '1. 1 1. 1 | 5 1. 1 1. | 6. 6 5 3 | 2 1 2 - | 3. 2 1. 5 | 6 5 6 1 | 1 - - -'
-    },
-    {
-        'title': '🎵 时值练习·十六分音符',
-        'key': 'C',
-        'jianpu': '1__ 5__ 5__ 1__ 1__ 5__ 5__ 1__ | 5__ 5__ 6__ 5__ 4__ 3__ 2__ 1__ | 1__ 2__ 3__ 4__ 5__ 6__ 7__ 1̇__ | 1̇__ 1̇__ 1̇__ -__ 1̇__ 1̇__ 1̇__ -__ | 1 1 1 - | 3 3 3 - | 2 2 2 - | 1 - - -'
-    },
-    {
-        'title': '🎵 时值练习·混合时值',
-        'key': 'C',
-        'jianpu': '1_ 5_ 6 5 | 3. 5 1 2 | 1__ 2__ 3__ 5__ | 1̇ 6 5 3 | 2_ 1_ -_ 5_ | 6 5 3 - | 1 2 3 5 | 5_ 5_ 5_ 3_ | 1 - - -'
-    },
-    {
-        'title': '匆匆那年（王菲）',
-        'key': 'Db',
-        'time_signature': '3/4',
-        'tempo': 126,
-        'jianpu': '3 - 4_3_ | 3. 1_ 2 | 3 2 1 | 2 - - | 1 - 1 | 2. 1_ 2 | 3 - - | 3 - - | 3 - 4_3_ | 3. 1_ 2 | 3 1̇ 7 | 2 - - | 1 - 1 | 2 - 2 | 1̣7̣_ 6̣ - | 6̣ - - | 3_3_ 3_6_ 7_1̇_ | 3_3_ 3_6_ 7_1̇_ | 3_3_ 3_3_ 2_1_ | 6 - - | 1̇_1̇_ 6_7_ 1̇_1̇_ | 2̇_2̇_ 2̇_5̇_ 5̇_5̇_ | 3̇_3̇_ 3̇_2̇_ 1̇ - | 3̇ - - | 3̇_3̇_ 6̇_7̇_ 1̇_1̇_ | 3̇_3̇_ 3̇_2̇_ 1̇ - | 6̇ - - | 1̇_1̇_ 1̇_7_ 6_5_ | 6_6_ 5_4_ 2_4_ | 4_5_ 4_2_ 3_2_ | 3 - - | 2_2_ 1_2_ 2_3_ | 4_2_ 1_3_ 3_2_ | 2_3_ 4_2_ - | 7_7_ 7_6_ 6_5_ | 6_6_ 5_6_ 5_6_ | 7 - - | 3_3_ 3_2_ 1̇_6_ | 1̇_1̇_ 1̇_7_ 6_5_ | 3 - - | 6_5_ 6_7_ 1̇_6_ | 5 - - | 4_5_ 4_3_ 2_1_ | 2_2_ 2_3_ 4_2_ | 3 - - | 1̇_7_ 1̇_7_ 1̇_6_ | 7 - - | 6_5_ 6_5_ 6_1̇_ | 1̇_3̇_ 3̇_4̇_ 3̇_2̇_ | 3̇_2̇_ 3̇_2̇_ 1̇ - | 3̇ - - | 3̇_3̇_ 6̇_7̇_ 1̇_1̇_ | 3̇_3̇_ 3̇_2̇_ 1̇ - | 6̇ - - | 1̇_1̇_ 1̇_7_ 6_5_ | 6_6_ 5_4_ 2_4_ | 4_5_ 4_2_ 3_2_ | 3 - -'
-    },
-    {
-        'title': '🌟 水星记（郭顶）',
-        'key': 'F',
-        'time_signature': '4/4',
-        'tempo': 67,
-        'jianpu': '0 - - - | 0. 5̣_ 3_ 2_ 2__1__ 1_ | 1_ 0._ 5̣__ 3_ 2_ 2__1__ 1_ | 1_ 0._ 5̣__ 3_ 2_ 2__1__ 4_ | 4__ 3__ 0._ 1__ 5_ 3_ 2_ 2__1__. | 1_ 6. 5_ 3_ 2_ 2__1__ 2_ | 2 - 0 0 | 0 - - 0 | 0. 5̣_ 3_ 2_ 2__1__ 1_ | 1_ 0._ 5̣__ 3_ 2_ 2__1__ 1_ | 1_ 0._ 5̣__ 3_ 2_ 2__1__ 4_ | 4__ 3__ 0._ 1__ 5_ 3_ 2_ 2__1__. | 1_ 6. 5_ 3_ 2_ 2__1__ 2_ | 2 - 5_ 3_ 2_ 2__1__ 2_. | 0__ 6̣__5̣__ 5̣ - 0__5̣__ 1_ 2_ | 3. 3_ 3__4__ 3 2 0_ 3_ | 4 3_ 2__2__1__1__ 3_ 3__2__ 2_ | 2 - 2_ 1_ 2_ 1_ | 1 - - - | 0 0 1_ 2_ 3_ 5_ | 6_ 5_ 4_ 6_ 5_ 3_ 6_ | 6 - 6_ 5_ 1̇_ 3_ | 3__2__ 5_ 3_ 2_ 5__3__ | 3 - 1_ 2_ 3_ 5_ | 6_ 5_ 3_ 6_ 5_ 3_ b6 | b6_ 5_ 4_ 4_. 0 1̇ 2̇ 1̇ | 1̇ 5 5_5_3_ 2__1__. | 1 - 1_ 2_ 3_ 1_ | 1̇ 1_. 1_ 2_ 3_ 4_ | 4__3__2__ 2_ 3_ 2_. 1_. | 1 - 0 0 | 0 0 1_ 2_ 3_ 5_ | 6_ 5_ 4_ 6_ 5_ 3_ 6_ | 6 - 6_ 5_ 1̇_ 3_ | 3__2__ 5_ 3_ 2_ 5__3__ | 3 - 1_ 2_ 3_ 5_ | 6_ 5_ 3_ 6_ 5_ 3_ b6 | b6_ 5_ 4_ 4_. 0 1̇ 2̇ 1̇ | 1̇ 5 5_5_1̇ 2̇ 3̇ | 3__2__ 1̇ 1̇ 1̇_ 1̇_ 6_ 5_ | 6_ 5_ 3_ 6_ 5_ 3_ 6_ | 6 - 6_ 5_ 1̇_ 3_ | 3__2__ 5_ 3_ 2__2__1__ | 6 - 1_ 2_ 3_ 1_ | 6̣_ 1̇_. 1_ 2_ 3_ 4__3__ | 2 - 3 2__1__. | 1 - - 0'
-    }
-]
+# 请求体上限：JSON / 图片 / OCR 均受此约束，超出由 Flask 直接返回 413
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
+
+# 写操作保护：设置该环境变量后，所有写接口必须携带 X-Admin-Token
+ADMIN_TOKEN = os.environ.get('FLASK_ADMIN_TOKEN', '').strip()
+
+
+def write_protected(view):
+    """可选写保护：仅在配置了 FLASK_ADMIN_TOKEN 时校验请求头（本地单用户默认不开启）。"""
+
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        if ADMIN_TOKEN:
+            token = request.headers.get('X-Admin-Token', '')
+            if token != ADMIN_TOKEN:
+                return jsonify({'error': '未授权：缺少或错误的 X-Admin-Token'}), 401
+        return view(*args, **kwargs)
+
+    return wrapper
+
+
+# ==================== 内置曲库：唯一数据源 songs.json ====================
+SONGS_JSON_PATH = os.path.join(os.path.dirname(__file__), 'songs.json')
+
+
+def load_builtin_songs():
+    """从 songs.json 读取内置曲目；文件缺失或损坏时返回空列表并告警。"""
+    try:
+        with open(SONGS_JSON_PATH, encoding='utf-8') as f:
+            data = json.load(f)
+        if isinstance(data, list):
+            return data
+        app.logger.warning('songs.json 结构应为数组，已忽略')
+    except (OSError, ValueError) as exc:
+        app.logger.warning('无法读取 songs.json：%s', exc)
+    return []
+
+
+BUILTIN_SONGS = load_builtin_songs()
+
+# ==================== 简谱持久化曲库数据库（SQLite） ====================
+# 用户数据库放在 instance/ 下并加入 .gitignore；首次启动时按 songs.json 播种。
+INSTANCE_DIR = os.path.join(os.path.dirname(__file__), 'instance')
+os.makedirs(INSTANCE_DIR, exist_ok=True)
+DATABASE_PATH = os.environ.get('JIANPU_DB_PATH') or os.path.join(INSTANCE_DIR, 'jianpu_library.db')
+
+# 兼容旧版本：数据库曾放在仓库根目录，若存在则迁移到 instance/，避免用户数据丢失
+LEGACY_DATABASE_PATH = os.path.join(os.path.dirname(__file__), 'jianpu_library.db')
+if not os.path.exists(DATABASE_PATH) and os.path.exists(LEGACY_DATABASE_PATH):
+    shutil.copy2(LEGACY_DATABASE_PATH, DATABASE_PATH)
+
+MAX_SONG_IMAGE_BYTES = 8 * 1024 * 1024
+MAX_OCR_IMAGE_BYTES = 8 * 1024 * 1024
+MAX_IMAGE_PIXELS = 30_000_000
+MAX_TITLE_LENGTH = 100
+MAX_JIANPU_LENGTH = 200_000
+ALLOWED_SONG_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
+ALLOWED_KEYS = {
+    'C', 'B#', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'Fb', 'F', 'E#',
+    'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B', 'Cb',
+}
+TEMPO_MIN, TEMPO_MAX = 20, 300
+TIME_SIGNATURE_RE = re.compile(r'^\d{1,2}/\d{1,2}$')
 
 
 def init_db():
-    """初始化数据库并播种内置经典曲目"""
+    """初始化数据库，并仅在首次建库时播种内置曲目。
+
+    内置曲目只在缺失时插入，已存在的记录不再更新，避免覆盖用户对谱面/调号/速度的修改。
+    """
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     cursor.execute('''
@@ -177,24 +128,19 @@ def init_db():
             cursor.execute(f'ALTER TABLE songs ADD COLUMN {name} {column_type}')
     conn.commit()
 
-    # 内置曲库按曲名增量同步：已有曲目更新谱例与调号，新曲目插入。
-    # 只操作 is_builtin=1 的记录，不会覆盖用户自建歌曲。
+    # 内置曲库仅在“尚不存在”时插入（seed-once），不覆盖已有内置记录
     for s in BUILTIN_SONGS:
         cursor.execute(
             'SELECT id FROM songs WHERE title = ? AND is_builtin = 1 ORDER BY id ASC LIMIT 1',
-            (s['title'],)
+            (s.get('title'),)
         )
-        row = cursor.fetchone()
-        if row:
-            cursor.execute(
-                'UPDATE songs SET jianpu = ?, key_signature = ?, time_signature = ?, tempo = ? WHERE id = ?',
-                (s['jianpu'], s.get('key', 'C'), s.get('time_signature', '4/4'), s.get('tempo'), row[0])
-            )
-        else:
-            cursor.execute(
-                'INSERT INTO songs (title, jianpu, key_signature, time_signature, tempo, is_builtin) VALUES (?, ?, ?, ?, ?, 1)',
-                (s['title'], s['jianpu'], s.get('key', 'C'), s.get('time_signature', '4/4'), s.get('tempo'))
-            )
+        if cursor.fetchone():
+            continue
+        cursor.execute(
+            'INSERT INTO songs (title, jianpu, key_signature, time_signature, tempo, is_builtin) VALUES (?, ?, ?, ?, ?, 1)',
+            (s.get('title'), s.get('jianpu', ''), s.get('key', 'C'),
+             s.get('time_signature', '4/4'), s.get('tempo'))
+        )
     conn.commit()
     conn.close()
 
@@ -225,6 +171,81 @@ for _name, (_template, _title) in PAGES.items():
     _register_page(_name, _template)
 
 
+# ==================== 请求校验工具 ====================
+def validate_image_bytes(image_data, max_bytes, label='图片'):
+    """校验图片体积与真实图像内容，返回错误信息（合法则返回 None）。"""
+    if not image_data:
+        return '%s内容为空' % label
+    if len(image_data) > max_bytes:
+        return '%s不能超过 %d MB' % (label, max_bytes // (1024 * 1024))
+    if PIL_AVAILABLE:
+        try:
+            with Image.open(io.BytesIO(image_data)) as probe:
+                probe.verify()
+            with Image.open(io.BytesIO(image_data)) as probe:
+                width, height = probe.size
+        except Exception:
+            return '无法识别的图片内容，请上传 JPG/PNG/GIF/WebP'
+        if width * height > MAX_IMAGE_PIXELS:
+            return '图片像素过大（上限 %d 万像素）' % (MAX_IMAGE_PIXELS // 10000)
+    return None
+
+
+def parse_song_payload(data):
+    """校验并规范化歌曲写入请求。
+
+    返回 (payload, error)。payload 中 title 可能为 None（PUT 允许不修改标题）。
+    """
+    if not isinstance(data, dict):
+        return None, '请求体必须是 JSON 对象'
+
+    title = data.get('title')
+    if title is not None:
+        if not isinstance(title, str):
+            return None, 'title 必须是字符串'
+        title = title.strip()
+        if not title:
+            return None, '歌曲标题不能为空'
+        if len(title) > MAX_TITLE_LENGTH:
+            return None, '标题不能超过 %d 个字符' % MAX_TITLE_LENGTH
+
+    jianpu = data.get('jianpu')
+    if not isinstance(jianpu, str) or not jianpu.strip():
+        return None, '简谱内容不能为空'
+    jianpu = jianpu.strip()
+    if len(jianpu) > MAX_JIANPU_LENGTH:
+        return None, '简谱内容过长（上限 %d 字符）' % MAX_JIANPU_LENGTH
+
+    key = data.get('key') or 'C'
+    if not isinstance(key, str) or key not in ALLOWED_KEYS:
+        return None, '调号无效，必须是 %s 之一' % '、'.join(sorted(ALLOWED_KEYS))
+
+    time_signature = data.get('time_signature') or '4/4'
+    if not isinstance(time_signature, str) or not TIME_SIGNATURE_RE.match(time_signature.strip()):
+        return None, '拍号格式无效，应形如 4/4'
+
+    tempo = data.get('tempo')
+    if tempo is None or tempo == '':
+        tempo = None
+    else:
+        if isinstance(tempo, bool) or not isinstance(tempo, (int, str)):
+            return None, 'tempo 必须是整数'
+        try:
+            tempo = int(tempo)
+        except (TypeError, ValueError):
+            return None, 'tempo 必须是整数'
+        if not (TEMPO_MIN <= tempo <= TEMPO_MAX):
+            return None, 'tempo 需在 %d-%d 之间' % (TEMPO_MIN, TEMPO_MAX)
+
+    return {
+        'title': title,
+        'jianpu': jianpu,
+        'key': key,
+        'time_signature': time_signature.strip(),
+        'tempo': tempo,
+    }, None
+
+
 @app.route('/api/ocr_jianpu', methods=['POST'])
 def ocr_jianpu():
     """识别上传的简谱图片，提取简谱文本。
@@ -238,11 +259,20 @@ def ocr_jianpu():
     if not file or not file.filename:
         return jsonify({'error': '未选择文件'}), 400
 
+    # 在读取前先按 Content-Length 粗筛，避免直接 file.read() 吞下超大请求
+    if request.content_length and request.content_length > MAX_OCR_IMAGE_BYTES + 4096:
+        return jsonify({'error': '图片不能超过 %d MB' % (MAX_OCR_IMAGE_BYTES // (1024 * 1024))}), 413
+
     if not OCR_AVAILABLE:
         return jsonify({'error': '服务器未安装 tesseract OCR，无法自动识别；请手动粘贴简谱，或安装：brew install tesseract tesseract-lang'}), 501
 
+    image_data = file.read()
+    err = validate_image_bytes(image_data, MAX_OCR_IMAGE_BYTES)
+    if err:
+        return jsonify({'error': err}), 400
+
     try:
-        img = Image.open(io.BytesIO(file.read()))
+        img = Image.open(io.BytesIO(image_data))
         if img.mode != 'RGB':
             img = img.convert('RGB')
         # 放大提高小字识别率，再灰度化 + 二值化增强
@@ -288,8 +318,9 @@ def normalize_jianpu_chars(text):
     # 3) 附点：· / • / ● / · 统一为标准小数点 .
     text = re.sub(r'[\u00b7\u2022\u25cf\uff0e]', '.', text)
 
-    # 4) 下划线（减时线）清理掉，避免干扰音符
-    text = text.replace('_', '')
+    # 4) 减时线（下划线 _ 或组合下划线 U+0332）保留：它表示八分/十六分音符时值，
+    #    与前端 parseJianpuToken() 使用同一套记号语义，不能删除。
+    text = text.replace('\u0332', '_')
 
     return text
 
@@ -331,8 +362,9 @@ def extract_jianpu_text(raw):
         # 字符归一化
         line = normalize_jianpu_chars(line)
 
-        # 保留简谱合法字符：数字 0-7、升降号 # b B、小节线 |、延音线 -、点 .、撇号/逗号、组合高低音点
-        cleaned = re.sub(r'[^0-7#bB|\-\s.,\'′″' + _COMBINING_DIACRITICS + r']', ' ', line)
+        # 保留简谱合法字符：数字 0-7、升降号 # b B、小节线 |、延音线 -、附点 .、
+        # 减时线 _、撇号/逗号、组合高低音点
+        cleaned = re.sub(r'[^0-7#bB|\-\s.,\'′″_' + _COMBINING_DIACRITICS + r']', ' ', line)
         cleaned = re.sub(r'\s+', ' ', cleaned).strip()
 
         # 只要包含至少一个简谱数字即可保留
@@ -343,7 +375,7 @@ def extract_jianpu_text(raw):
     return '\n'.join(lines), key_hint
 
 
-# ==================== 曲库 RESTful API（查、增、删） ====================
+# ==================== 曲库 RESTful API（查、增、改、删） ====================
 @app.route('/api/jianpu/songs', methods=['GET'])
 def get_jianpu_songs():
     """获取所有简谱歌曲（包括内置与用户自建）"""
@@ -368,23 +400,21 @@ def get_jianpu_songs():
 
 
 @app.route('/api/jianpu/songs', methods=['POST'])
+@write_protected
 def save_jianpu_song():
     """保存用户自建简谱歌曲到数据库"""
-    data = request.get_json() or {}
-    title = (data.get('title') or '').strip()
-    jianpu = (data.get('jianpu') or '').strip()
-    key_signature = (data.get('key') or 'C').strip()
-
-    if not title:
+    data = request.get_json(silent=True)
+    payload, error = parse_song_payload(data if data is not None else {})
+    if error:
+        return jsonify({'error': error}), 400
+    if not payload['title']:
         return jsonify({'error': '歌曲标题不能为空'}), 400
-    if not jianpu:
-        return jsonify({'error': '简谱内容不能为空'}), 400
 
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        'INSERT INTO songs (title, jianpu, key_signature, is_builtin) VALUES (?, ?, ?, 0)',
-        (title, jianpu, key_signature)
+        'INSERT INTO songs (title, jianpu, key_signature, time_signature, tempo, is_builtin) VALUES (?, ?, ?, ?, ?, 0)',
+        (payload['title'], payload['jianpu'], payload['key'], payload['time_signature'], payload['tempo'])
     )
     new_id = cursor.lastrowid
     conn.commit()
@@ -394,54 +424,41 @@ def save_jianpu_song():
         'status': 'ok',
         'song': {
             'id': new_id,
-            'title': title,
-            'jianpu': jianpu,
-            'key': key_signature,
+            'title': payload['title'],
+            'jianpu': payload['jianpu'],
+            'key': payload['key'],
+            'time_signature': payload['time_signature'],
+            'tempo': payload['tempo'],
             'is_builtin': False
         }
     }), 201
 
 
 @app.route('/api/jianpu/songs/<int:song_id>', methods=['PUT'])
+@write_protected
 def update_jianpu_song(song_id):
-    """编辑并保存已有歌曲（曲谱文本 / 调号 / 拍号 / 速度 / 标题）。内置与自建歌曲均可修正。"""
-    data = request.get_json() or {}
-    jianpu = (data.get('jianpu') or '').strip()
-    key_signature = (data.get('key') or '').strip()
-    time_signature = (data.get('time_signature') or '').strip()
-    tempo = data.get('tempo')
-    title = (data.get('title') or '').strip()
-
-    if not jianpu:
-        return jsonify({'error': '简谱内容不能为空'}), 400
+    """编辑并保存用户自建歌曲。内置曲目只读，需另存为副本。"""
+    data = request.get_json(silent=True)
+    payload, error = parse_song_payload(data if data is not None else {})
+    if error:
+        return jsonify({'error': error}), 400
 
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
-    cursor.execute('SELECT id, title FROM songs WHERE id = ?', (song_id,))
+    cursor.execute('SELECT id, is_builtin FROM songs WHERE id = ?', (song_id,))
     row = cursor.fetchone()
     if not row:
         conn.close()
         return jsonify({'error': '未找到指定歌曲'}), 404
+    if row[1] == 1:
+        conn.close()
+        return jsonify({'error': '内置曲目为只读，请使用「另存为副本」保存你的修改'}), 403
 
-    # 动态构建更新字段：只更新请求中提供的字段
-    fields = ['jianpu = ?']
-    values = [jianpu]
-    if title:
+    fields = ['jianpu = ?', 'key_signature = ?', 'time_signature = ?', 'tempo = ?']
+    values = [payload['jianpu'], payload['key'], payload['time_signature'], payload['tempo']]
+    if payload['title']:
         fields.append('title = ?')
-        values.append(title)
-    if key_signature:
-        fields.append('key_signature = ?')
-        values.append(key_signature)
-    if time_signature:
-        fields.append('time_signature = ?')
-        values.append(time_signature)
-    if tempo is not None:
-        try:
-            tempo_val = int(tempo)
-            fields.append('tempo = ?')
-            values.append(tempo_val if tempo_val > 0 else None)
-        except (TypeError, ValueError):
-            pass
+        values.append(payload['title'])
 
     values.append(song_id)
     cursor.execute(f'UPDATE songs SET {", ".join(fields)} WHERE id = ?', values)
@@ -486,6 +503,7 @@ def get_jianpu_song_image(song_id):
 
 
 @app.route('/api/jianpu/songs/<int:song_id>/image', methods=['PUT'])
+@write_protected
 def put_jianpu_song_image(song_id):
     """上传或替换歌曲谱图，图片以 BLOB 直接保存在 SQLite 中。"""
     file = request.files.get('image')
@@ -495,10 +513,9 @@ def put_jianpu_song_image(song_id):
         return jsonify({'error': '仅支持 JPG、PNG、GIF 或 WebP 图片'}), 400
 
     image_data = file.read()
-    if not image_data:
-        return jsonify({'error': '图片内容为空'}), 400
-    if len(image_data) > MAX_SONG_IMAGE_BYTES:
-        return jsonify({'error': '图片不能超过 8 MB'}), 413
+    err = validate_image_bytes(image_data, MAX_SONG_IMAGE_BYTES)
+    if err:
+        return jsonify({'error': err}), 400
 
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
@@ -524,6 +541,7 @@ def put_jianpu_song_image(song_id):
 
 
 @app.route('/api/jianpu/songs/<int:song_id>/image', methods=['DELETE'])
+@write_protected
 def delete_jianpu_song_image(song_id):
     """删除歌曲关联的谱图，不会删除简谱文本或歌曲记录。"""
     conn = sqlite3.connect(DATABASE_PATH)
@@ -545,6 +563,7 @@ def delete_jianpu_song_image(song_id):
 
 
 @app.route('/api/jianpu/songs/<int:song_id>', methods=['DELETE'])
+@write_protected
 def delete_jianpu_song(song_id):
     """从数据库删除用户自建的歌曲（内置经典曲目受保护）"""
     conn = sqlite3.connect(DATABASE_PATH)
@@ -571,13 +590,20 @@ def healthz():
     return {'status': 'ok'}, 200
 
 
+@app.errorhandler(413)
+def request_entity_too_large(_error):
+    """请求体超过 MAX_CONTENT_LENGTH 时返回 JSON 而不是 HTML。"""
+    return jsonify({'error': '请求体过大（上限 %d MB）' % (app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024))}), 413
+
+
 @app.errorhandler(404)
 def not_found(_error):
     return render_template('index.html'), 404
 
 
 if __name__ == '__main__':
-    debug = os.environ.get('FLASK_DEBUG', '1') == '1'
+    # 默认关闭 debug：公开部署不应使用 Flask 调试器。需要本地调试时显式设 FLASK_DEBUG=1。
+    debug = os.environ.get('FLASK_DEBUG', '0') == '1'
     host = os.environ.get('FLASK_HOST', '127.0.0.1')
     port = int(os.environ.get('FLASK_PORT', '5000'))
     app.run(debug=debug, host=host, port=port)
