@@ -61,6 +61,26 @@ def compute_data_version(songs):
 
 BUILTIN_DATA_VERSION = compute_data_version(BUILTIN_SONGS)
 
+
+def find_duplicate_source_ids(songs):
+    """返回 songs.json 中重复或缺失的 id（用于启动告警与构建测试）。"""
+    seen = set()
+    duplicates = []
+    for song in songs:
+        sid = song.get('id') if isinstance(song, dict) else None
+        if sid is None:
+            duplicates.append(None)
+            continue
+        if sid in seen:
+            duplicates.append(sid)
+        seen.add(sid)
+    return duplicates
+
+
+_DUPLICATE_SOURCE_IDS = find_duplicate_source_ids(BUILTIN_SONGS)
+if _DUPLICATE_SOURCE_IDS:
+    app.logger.warning('songs.json 存在重复/缺失的 id：%s', _DUPLICATE_SOURCE_IDS)
+
 # ==================== 简谱持久化曲库数据库（SQLite） ====================
 # 用户数据库放在 instance/ 下并加入 .gitignore；首次启动时按 songs.json 播种。
 INSTANCE_DIR = os.path.join(os.path.dirname(__file__), 'instance')
@@ -83,30 +103,38 @@ ALLOWED_KEYS = {
     'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B', 'Cb',
 }
 TEMPO_MIN, TEMPO_MAX = 20, 300
-TIME_SIGNATURE_RE = re.compile(r'^\d{1,2}/\d{1,2}$')
+# 系统实际支持的拍号集合（校验分母/范围，避免 00/00、3/0 之类的非法值）
+ALLOWED_TIME_SIGNATURES = {'2/4', '3/4', '4/4', '6/8', '9/8', '12/8'}
+ALLOWED_TIME_SIGNATURE_DENOMINATORS = {1, 2, 4, 8, 16, 32}
 
 
 def sync_builtin_songs(cursor):
-    """按 source_id 同步内置曲目。
+    """按 source_id 同步内置曲目（songs.json 为唯一数据源）。
 
     - 新曲目（按 source_id 未匹配）插入；
-    - 已存在曲目按 source_id 匹配，仅更新内容字段（简谱/调号/拍号/速度/静态谱图），
-      **不修改标题**，因此修改 songs.json 的标题不会再产生重复曲目；
-    - 仅当 songs.json 数据版本变化时才执行内容更新，避免每次启动都写库。
+    - 已存在曲目按 source_id 匹配，数据版本变化时同时更新标题与全部内容字段
+      （有稳定 source_id，更新标题不会产生重复）；
+    - 在 songs.json 中已不存在的内置曲目标记 is_active=0（软删除、可逆，API 不再返回）；
+    - 保留历史数据，不会误删用户自建曲目。
     """
     stored_version = None
     row = cursor.execute("SELECT value FROM meta WHERE key = 'builtin_data_version'").fetchone()
     if row:
         stored_version = row[0]
 
+    version_changed = stored_version != BUILTIN_DATA_VERSION
+    active_source_ids = []
+
     for song in BUILTIN_SONGS:
         source_id = song.get('id')
-        target = None
-        if source_id is not None:
-            target = cursor.execute(
-                'SELECT id FROM songs WHERE source_id = ? AND is_builtin = 1 LIMIT 1',
-                (source_id,)
-            ).fetchone()
+        if source_id is None:
+            continue
+        active_source_ids.append(source_id)
+
+        target = cursor.execute(
+            'SELECT id FROM songs WHERE source_id = ? AND is_builtin = 1 LIMIT 1',
+            (source_id,)
+        ).fetchone()
         if target is None:
             # 兼容旧库：按标题匹配已有内置记录，随后回填 source_id
             target = cursor.execute(
@@ -117,8 +145,9 @@ def sync_builtin_songs(cursor):
         if target is None:
             cursor.execute(
                 '''INSERT INTO songs
-                   (title, jianpu, key_signature, time_signature, tempo, static_image, source_id, is_builtin)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, 1)''',
+                   (title, jianpu, key_signature, time_signature, tempo, static_image,
+                    source_id, is_builtin, is_active)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1)''',
                 (song.get('title'), song.get('jianpu', ''), song.get('key', 'C'),
                  song.get('time_signature', '4/4'), song.get('tempo'),
                  song.get('static_image'), source_id)
@@ -126,19 +155,33 @@ def sync_builtin_songs(cursor):
             continue
 
         song_pk = target[0]
-        # 旧库升级：回填 source_id
+        # 回填 source_id 并确保处于启用状态
         cursor.execute(
-            'UPDATE songs SET source_id = ? WHERE id = ? AND (source_id IS NULL OR source_id <> ?)',
+            '''UPDATE songs SET source_id = ?, is_active = 1
+               WHERE id = ? AND (source_id IS NULL OR source_id <> ? OR COALESCE(is_active, 1) <> 1)''',
             (source_id, song_pk, source_id)
         )
-        if stored_version != BUILTIN_DATA_VERSION:
+        if version_changed:
             cursor.execute(
                 '''UPDATE songs
-                   SET jianpu = ?, key_signature = ?, time_signature = ?, tempo = ?, static_image = ?
+                   SET title = ?, jianpu = ?, key_signature = ?, time_signature = ?, tempo = ?, static_image = ?
                    WHERE id = ?''',
-                (song.get('jianpu', ''), song.get('key', 'C'), song.get('time_signature', '4/4'),
-                 song.get('tempo'), song.get('static_image'), song_pk)
+                (song.get('title'), song.get('jianpu', ''), song.get('key', 'C'),
+                 song.get('time_signature', '4/4'), song.get('tempo'),
+                 song.get('static_image'), song_pk)
             )
+
+    # 数据版本变化时，把 songs.json 中已移除的内置曲目标记为停用（软删除）
+    if version_changed:
+        if active_source_ids:
+            placeholders = ','.join('?' * len(active_source_ids))
+            cursor.execute(
+                'UPDATE songs SET is_active = 0 WHERE is_builtin = 1 AND source_id IS NOT NULL '
+                'AND source_id NOT IN (%s)' % placeholders,
+                active_source_ids
+            )
+        else:
+            cursor.execute('UPDATE songs SET is_active = 0 WHERE is_builtin = 1 AND source_id IS NOT NULL')
 
     cursor.execute(
         "INSERT OR REPLACE INTO meta (key, value) VALUES ('builtin_data_version', ?)",
@@ -174,10 +217,16 @@ def init_db():
         'tempo': 'INTEGER',
         'source_id': 'INTEGER',      # songs.json 中的稳定曲目 id
         'static_image': 'TEXT',      # 内置静态谱图文件名（仅路径，不把图片写进数据库）
+        'is_active': 'INTEGER DEFAULT 1',  # 内置曲目被 songs.json 移除后置 0（软删除）
     }
     for name, column_type in migrations.items():
         if name not in columns:
             cursor.execute(f'ALTER TABLE songs ADD COLUMN {name} {column_type}')
+    # source_id 唯一约束（允许多个 NULL，即用户自建曲目）
+    cursor.execute(
+        'CREATE UNIQUE INDEX IF NOT EXISTS idx_songs_source_id '
+        'ON songs(source_id) WHERE source_id IS NOT NULL'
+    )
     conn.commit()
 
     sync_builtin_songs(cursor)
@@ -266,9 +315,12 @@ def _validate_key(value):
 def _validate_time_signature(value):
     if value is None:
         return None, None
-    if not isinstance(value, str) or not TIME_SIGNATURE_RE.match(value.strip()):
-        return None, '拍号格式无效，应形如 4/4'
-    return value.strip(), None
+    if not isinstance(value, str):
+        return None, '拍号必须是字符串'
+    ts = value.strip()
+    if ts not in ALLOWED_TIME_SIGNATURES:
+        return None, '拍号无效，仅支持：%s' % '、'.join(sorted(ALLOWED_TIME_SIGNATURES))
+    return ts, None
 
 
 def _validate_tempo(value):
@@ -514,7 +566,8 @@ def get_jianpu_songs():
     cursor.execute(
         '''SELECT id, title, jianpu, key_signature, time_signature, tempo, is_builtin,
                   image_data IS NOT NULL, static_image, source_id
-           FROM songs ORDER BY is_builtin DESC, id ASC'''
+           FROM songs WHERE COALESCE(is_active, 1) <> 0
+           ORDER BY is_builtin DESC, id ASC'''
     )
     rows = cursor.fetchall()
     conn.close()

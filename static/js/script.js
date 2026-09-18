@@ -199,6 +199,27 @@ function initCMajorScalePractice() {
     let examRandomNote = null; // 考试模式下的随机音
     let examRandomOctave = null; // 考试模式下的随机音八度
     let isWaitingForAnswer = false; // 是否等待用户回答
+
+    // 会话令牌：开始/停止/切换设置时递增，使旧的异步播放流程（await 之后）自动失效
+    let sessionToken = 0;
+
+    // 让当前会话失效：递增令牌，并停掉一切正在播放/加载/等待的资源（幂等）
+    function invalidateSession() {
+        sessionToken += 1;
+        if (window.audioSystem) window.audioSystem.stopAll();
+        pauseRequested = false;
+        isWaitingForAnswer = false;
+        if (timer) {
+            clearTimeout(timer);
+            timer = null;
+        }
+        return sessionToken;
+    }
+
+    // 会话是否仍然有效（令牌一致且仍在播放、未暂停）
+    function isSessionActive(token) {
+        return token === sessionToken && isPlaying && !isPaused;
+    }
     
     // 生成C大调钢琴键盘（从C4到C5）
     generateCMajorKeyboard(pianoKeyboard);
@@ -242,6 +263,17 @@ function initCMajorScalePractice() {
     if (modeSelect) {
         modeSelect.addEventListener('change', function() {
             currentMode = this.value;
+
+            // 切换模式时停止当前练习，避免旧会话继续播放/判分
+            invalidateSession();
+            isPlaying = false;
+            isPaused = false;
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            stopBtn.disabled = true;
+            pauseBtn.innerHTML = '';
+            pauseBtn.style.fontSize = '';
+            removeAllHighlights();
             
             // 当选择考试模式时，初始提示每组考试20题
             if (currentMode === 'exam') {
@@ -420,7 +452,10 @@ function initCMajorScalePractice() {
     // 开始按钮事件
     startBtn.addEventListener('click', function() {
         if (isPlaying && !isPaused) return;
-        
+
+        // 开始新一轮前，先让上一轮残留的异步流程失效
+        invalidateSession();
+
         if (isPaused) {
             // 从暂停状态恢复
             isPaused = false;
@@ -466,23 +501,19 @@ function initCMajorScalePractice() {
     
     // 停止按钮事件
     stopBtn.addEventListener('click', function() {
-        if (!isPlaying) return;
-        
+        if (!isPlaying && !isWaitingForAnswer) return;
+
+        // 真正停止：失效会话（停音源 + 清定时器 + 清考试等待状态）
+        invalidateSession();
         isPlaying = false;
         isPaused = false;
         startBtn.disabled = false;
         pauseBtn.disabled = true;
         stopBtn.disabled = true;
-        
+
         // 恢复暂停按钮为原来的暂停图标
         pauseBtn.innerHTML = '';
         pauseBtn.style.fontSize = '';
-        
-        // 清除定时器
-        if (timer) {
-            clearTimeout(timer);
-            timer = null;
-        }
         
         // 重置结果显示
         resultText.textContent = '练习已停止';
@@ -608,6 +639,7 @@ function initCMajorScalePractice() {
     
     // 进入暂停状态（统一处理按钮状态与提示文案）
     function enterPausedState() {
+        if (window.audioSystem) window.audioSystem.stopAll(); // 暂停时停止当前发声
         isPaused = true;
         pauseRequested = false;
         isPlaying = true; // 保持isPlaying为true，因为只是暂停
@@ -929,7 +961,10 @@ function initCMajorScalePractice() {
     // 播放对应调式的音阶
     async function playCMajorScale() {
         if (!isPlaying || isPaused) return;
-        
+
+        // 本轮的会话令牌：停止/切换设置会使其失效，之后每个 await 都会检查
+        const token = ++sessionToken;
+
         // 重置结果显示
         if (currentMode === 'exam') {
             resultText.textContent = `考试模式：第${examCurrentGroup + 1}题，共${examTotalGroups}题`;
@@ -950,7 +985,7 @@ function initCMajorScalePractice() {
         // 如果不跳过音阶，播放对应调式的音阶
         if (!skipScale) {
             for (let i = 0; i < scaleNotes.length; i++) {
-                if (!isPlaying) return;
+                if (!isSessionActive(token)) return;
                 
                 const note = scaleNotes[i];
                 const octave = octaves[i];
@@ -973,7 +1008,7 @@ function initCMajorScalePractice() {
         }
         
         // 播放当前调式的主音三次，然后随机播放一个音
-        if (!isPlaying) return;
+        if (!isSessionActive(token)) return;
         
         // 固定BPM=90，二分音符时值
         const fixedBPM = 90;
@@ -981,14 +1016,14 @@ function initCMajorScalePractice() {
         
         // 播放当前调式的主音两次（二分音符时值）
         for (let i = 0; i < 2; i++) {
-            if (!isPlaying) return;
+            if (!isSessionActive(token)) return;
             const playableRootNote = getPlayableNoteName(scaleNotes[0], currentOctave);
             audioSystem.playNote(playableRootNote, currentOctave, halfNoteDuration);
             await new Promise(resolve => setTimeout(resolve, halfNoteDuration * 1000));
         }
         
         // 随机选择一个音播放一次（二分音符时值）
-        if (!isPlaying) return;
+        if (!isSessionActive(token)) return;
         
         let randomNote, randomOctave;
         
@@ -1052,11 +1087,11 @@ function initCMajorScalePractice() {
         } else {
             // 训练模式：停顿2秒，再次播放相同的随机音
             // 停顿2秒
-            if (!isPlaying) return;
+            if (!isSessionActive(token)) return;
             await new Promise(resolve => setTimeout(resolve, 2000));
             
             // 再次播放相同的随机音
-            if (!isPlaying) return;
+            if (!isSessionActive(token)) return;
             audioSystem.playNote(playableRandomNote, randomOctave, halfNoteDuration);
             await new Promise(resolve => setTimeout(resolve, halfNoteDuration * 1000));
         }
@@ -1092,7 +1127,8 @@ function initCMajorScalePractice() {
             
             // 停顿指定时间后继续
             timer = setTimeout(() => {
-                if (!isPlaying) return;
+                timer = null;
+                if (!isSessionActive(token)) return;
                 
                 // 检查是否有暂停请求
                 if (pauseRequested) {
@@ -1309,7 +1345,7 @@ function initCMajorScalePractice() {
     
     // 考试模式下处理钢琴键点击
     function handleKeyClickForExam() {
-        if (!isWaitingForAnswer) return;
+        if (!isWaitingForAnswer || !isPlaying) return;
         
         const clickedNote = this.dataset.note;
         const clickedOctave = parseInt(this.dataset.octave);
@@ -1353,7 +1389,10 @@ function initCMajorScalePractice() {
         // 检查考试是否结束
         if (examCurrentGroup >= examTotalGroups) {
             // 考试结束
+                const finishToken = sessionToken;
                 setTimeout(() => {
+                    // 已停止/切换后不再覆盖页面状态
+                    if (finishToken !== sessionToken) return;
                     resultText.textContent = `考试结束！本次考试分数：${examScore}分`;
                     resultNote.textContent = '';
                     
@@ -1379,21 +1418,48 @@ function initCMajorScalePractice() {
                     examRandomOctave = null;
                 }, 2000);
         } else {
-            // 继续下一组
-            setTimeout(() => {
+            // 继续下一组（定时器登记到 timer，停止时可被清除）
+            timer = setTimeout(() => {
+                timer = null;
                 if (!isPlaying) return;
-                
+
                 // 检查是否有暂停请求
                 if (pauseRequested) {
                     enterPausedState();
                     return;
                 }
-                
+
                 // 进阶/困难模式下随机切换音组或调式
                 randomizeDifficultyChange();
                 playCMajorScale();
             }, currentPause * 1000);
         }
+    }
+
+    // 自动化测试钩子：仅当页面显式设置 window.__SCALE_PRACTICE_TEST__ = true 时暴露内部状态，
+    // 正常运行（未设置该标志）时不生效，不影响生产行为。
+    if (window.__SCALE_PRACTICE_TEST__) {
+        window.__scalePractice = {
+            state: function () {
+                return {
+                    isPlaying: isPlaying,
+                    isPaused: isPaused,
+                    isWaitingForAnswer: isWaitingForAnswer,
+                    sessionToken: sessionToken,
+                    examScore: examScore,
+                    examCurrentGroup: examCurrentGroup
+                };
+            },
+            clickStart: function () { startBtn.click(); },
+            clickStop: function () { stopBtn.click(); },
+            clickPause: function () { pauseBtn.click(); },
+            setCurrentSpeed: function (v) { currentSpeed = v; },
+            setWaitingForAnswer: function (v) { isWaitingForAnswer = !!v; },
+            getResultText: function () { return resultText.textContent; },
+            handleKey: function (note, octave) {
+                handleKeyClickForExam.call({ dataset: { note: note, octave: String(octave) } });
+            }
+        };
     }
 }
 

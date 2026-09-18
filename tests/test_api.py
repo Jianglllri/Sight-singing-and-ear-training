@@ -194,3 +194,75 @@ def test_put_without_fields_is_rejected(client):
     assert client.put('/api/jianpu/songs/%d' % song_id, json={}).status_code == 400
     client.delete('/api/jianpu/songs/%d' % song_id)
 
+
+def test_invalid_time_signatures_rejected(client):
+    """只校验格式是不够的：00/00、99/99、3/0、7/8 都必须被拒绝。"""
+    for ts in ['00/00', '99/99', '3/0', '7/8', '4-4']:
+        res = client.post('/api/jianpu/songs', json={'title': 'ts', 'jianpu': '1', 'time_signature': ts})
+        assert res.status_code == 400, '非法拍号未被拒绝: %s' % ts
+
+
+def test_valid_time_signature_accepted(client):
+    for ts in ['2/4', '4/4', '6/8', '12/8']:
+        res = client.post('/api/jianpu/songs', json={'title': 'ts', 'jianpu': '1', 'time_signature': ts})
+        assert res.status_code == 201, ts
+        client.delete('/api/jianpu/songs/%d' % res.get_json()['song']['id'])
+
+
+def test_songs_json_ids_unique(app_module):
+    assert app_module.find_duplicate_source_ids(app_module.BUILTIN_SONGS) == []
+
+
+def test_source_id_unique_index_exists(app_module):
+    import sqlite3
+    conn = sqlite3.connect(app_module.DATABASE_PATH)
+    row = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_songs_source_id'"
+    ).fetchone()
+    conn.close()
+    assert row is not None
+
+
+def test_builtin_migration_updates_title_and_soft_deletes(client, app_module):
+    """songs.json 改名/移除时：标题同步更新，被移除的曲目软删除且 API 不再返回。"""
+    import copy
+    import sqlite3
+
+    original_songs = app_module.BUILTIN_SONGS
+    original_version = app_module.BUILTIN_DATA_VERSION
+    try:
+        modified = copy.deepcopy(original_songs)
+        renamed_id = modified[0]['id']
+        removed_id = modified[1]['id']
+        modified[0]['title'] = 'RENAMED_IN_SOURCE'
+        modified = [s for s in modified if s['id'] != removed_id]
+
+        app_module.BUILTIN_SONGS = modified
+        app_module.BUILTIN_DATA_VERSION = app_module.compute_data_version(modified)
+        app_module.init_db()
+
+        conn = sqlite3.connect(app_module.DATABASE_PATH)
+        title = conn.execute('SELECT title FROM songs WHERE source_id = ?', (renamed_id,)).fetchone()[0]
+        active = conn.execute('SELECT is_active FROM songs WHERE source_id = ?', (removed_id,)).fetchone()[0]
+        conn.close()
+        assert title == 'RENAMED_IN_SOURCE'
+        assert active == 0
+
+        served = [s['source_id'] for s in client.get('/api/jianpu/songs').get_json()['songs']]
+        assert removed_id not in served
+        assert renamed_id in served
+    finally:
+        # 恢复原始数据，避免影响其它测试
+        app_module.BUILTIN_SONGS = original_songs
+        app_module.BUILTIN_DATA_VERSION = original_version
+        app_module.init_db()
+
+    conn = sqlite3.connect(app_module.DATABASE_PATH)
+    restored = conn.execute(
+        'SELECT title, is_active FROM songs WHERE source_id = ?', (original_songs[0]['id'],)
+    ).fetchone()
+    conn.close()
+    assert restored[0] == original_songs[0]['title']
+    assert restored[1] == 1
+
+

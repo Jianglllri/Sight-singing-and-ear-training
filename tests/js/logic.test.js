@@ -125,9 +125,11 @@ async function testAudio() {
         getAudioFileByNoteAndOctave: () => 'X.mp3'
     };
 
+    // 用静默 console 加载 audio.js：预加载失败的告警不再刷屏，避免掩盖真正的错误
+    const silentConsole = { log: console.log, warn() {}, error() {} };
     runInSandbox(read('static/js/audio.js'), {
         window: windowObj, fetch: () => fetchImpl(), setTimeout, clearTimeout,
-        console, Promise, Math, Number, Float32Array, ArrayBuffer
+        console: silentConsole, Promise, Math, Number, Float32Array, ArrayBuffer
     });
     const audio = windowObj.audioSystem;
 
@@ -194,6 +196,7 @@ function testJianpu() {
 globalThis.__api = {
   loadSource: loadSource, pickSegment: pickSegment,
   buildPlayableRuns: buildPlayableRuns, resolveSaveAction: resolveSaveAction,
+  normalizeKey: normalizeKey,
   getSongNotes: function () { return songNotes; }
 };
 })();`);
@@ -267,6 +270,20 @@ globalThis.__api = {
         api.resolveSaveAction({ id: 1, is_builtin: 1 }, false) === 'local-copy');
     check('jianpu：本地曲目 -> local-update',
         api.resolveSaveAction({ id: 'local_1', is_builtin: 0 }, true) === 'local-update');
+
+    // 调号规范化：API 接受的 8 种非常规拼写必须落到下拉框支持的 12 个选项上
+    const keyCases = {
+        'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 'G#': 'Ab', 'A#': 'Bb',
+        'Fb': 'E', 'E#': 'F', 'Cb': 'B', 'B#': 'C',
+        'C': 'C', 'Db': 'Db', 'G': 'G', 'B': 'B'
+    };
+    let keyBad = [];
+    Object.keys(keyCases).forEach(function (input) {
+        const out = api.normalizeKey(input);
+        if (out !== keyCases[input]) keyBad.push(input + '->' + out);
+    });
+    check('jianpu：调号规范化（C# 等→下拉框支持的拼写）', keyBad.length === 0, keyBad.join(','));
+    check('jianpu：未知调号回退到 C', api.normalizeKey('XYZ') === 'C' && api.normalizeKey('') === 'C');
 }
 
 // ------------------------------------------------------------ pitch_training
@@ -323,10 +340,132 @@ globalThis.__api = {
     check('pitch：八度题方向仅 high/low 且相差 12 半音', octaveBad === 0, 'bad=' + octaveBad);
 }
 
+// ------------------------------------------------- script.js 练习状态机（停止/考试）
+async function testScalePracticeSession() {
+    let playCalls = 0;
+    let stopCalls = 0;
+
+    function makeRichEl(tag) {
+        const handlers = {};
+        return {
+            tagName: (tag || 'div').toUpperCase(),
+            style: {}, dataset: {}, className: '', value: '', checked: false,
+            disabled: false, hidden: false, innerHTML: '', textContent: '',
+            classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+            _handlers: handlers,
+            addEventListener(type, fn) { (handlers[type] = handlers[type] || []).push(fn); },
+            removeEventListener(type, fn) {
+                if (handlers[type]) handlers[type] = handlers[type].filter(f => f !== fn);
+            },
+            dispatch(type, ev) { (handlers[type] || []).forEach(fn => fn.call(this, ev || {})); },
+            click() { this.dispatch('click', {}); },
+            appendChild(c) { return c; },
+            insertBefore(c) { return c; },
+            querySelector() { return makeRichEl('div'); },
+            querySelectorAll() { return []; },
+            setAttribute() {}, getAttribute() { return null; }, removeAttribute() {},
+            focus() {}, remove() {}, closest() { return null; },
+            getBoundingClientRect() { return { left: 0, top: 0, width: 0, height: 0 }; }
+        };
+    }
+
+    const els = {};
+    const getEl = id => (els[id] = els[id] || makeRichEl('div'));
+    const scaleContainer = makeRichEl('div');
+    const resultArea = makeRichEl('div');
+    const resultText = makeRichEl('div');
+    const resultNote = makeRichEl('div');
+    resultArea.querySelector = sel =>
+        (sel === '.result-text' ? resultText : sel === '.result-note' ? resultNote : makeRichEl('div'));
+    els['result-area'] = resultArea;
+
+    const documentMock = {
+        querySelector(sel) { return sel === '.c-major-scale-container' ? scaleContainer : null; },
+        querySelectorAll() { return []; },
+        getElementById: getEl,
+        addEventListener() {},
+        createElement: tag => makeRichEl(tag),
+        createElementNS: () => makeRichEl('div')
+    };
+
+    const audioStub = {
+        playNote() { playCalls++; },
+        playFrequency() { playCalls++; },
+        stopAll() { stopCalls++; },
+        playCMajorScale() {},
+        scheduleTimer(fn, ms) { return setTimeout(fn, ms); },
+        clearTimers() {}
+    };
+
+    const windowObj = {
+        __SCALE_PRACTICE_TEST__: true,
+        audioSystem: audioStub,
+        speechSynthesis: { speak() {}, cancel() {} }
+    };
+    const SpeechStub = function () {};
+
+    const sandbox = {
+        window: windowObj, document: documentMock, audioSystem: audioStub,
+        speechSynthesis: windowObj.speechSynthesis, SpeechSynthesisUtterance: SpeechStub,
+        setTimeout, clearTimeout, console, Promise, Math, Number, String, Object, Array,
+        JSON, Date, parseInt, parseFloat, isNaN, alert() {}
+    };
+    runInSandbox(read('static/js/keymapping.js'), sandbox);
+    runInSandbox(read('static/js/script.js'), sandbox);
+
+    sandbox.initCMajorScalePractice();
+    const dbg = windowObj.__scalePractice;
+    if (!dbg) {
+        check('scale：测试钩子可用', false);
+        return;
+    }
+
+    dbg.setCurrentSpeed(600); // 四分音符 0.1s，便于在毫秒级观察后续音符
+
+    // 1. 播放中停止：之后不得再发声
+    playCalls = 0; stopCalls = 0;
+    dbg.clickStart();
+    await sleep(40);
+    dbg.clickStop();
+    const callsAtStop = playCalls;
+    await sleep(400); // 若旧流程未失效，这段时间还会播放多个音
+    check('scale：停止后不再继续发声', playCalls === callsAtStop,
+        'atStop=' + callsAtStop + ' after=' + playCalls);
+    check('scale：停止会调用 audioSystem.stopAll()', stopCalls >= 1, 'stopCalls=' + stopCalls);
+    let st = dbg.state();
+    check('scale：停止后 isPlaying / isWaitingForAnswer 复位',
+        st.isPlaying === false && st.isWaitingForAnswer === false, JSON.stringify(st));
+
+    // 2. 考试等待作答时停止：点击琴键不再判分
+    dbg.clickStart();
+    dbg.setWaitingForAnswer(true);
+    dbg.clickStop();
+    dbg.handleKey('C', 4);
+    st = dbg.state();
+    check('scale：考试等待作答时停止后点击琴键不再判分',
+        st.isPlaying === false && st.isWaitingForAnswer === false && st.examScore === 0,
+        JSON.stringify(st));
+
+    // 3. 停止后立即重新开始：不出现双重播放
+    playCalls = 0;
+    dbg.clickStart();
+    await sleep(30);
+    dbg.clickStop();
+    const afterStop = playCalls;
+    dbg.clickStart(); // 立即重新开始
+    await sleep(250);
+    const total = playCalls;
+    dbg.clickStop();
+    await sleep(50);
+    check('scale：停止后立即重启不会双重播放（异步流程已失效）',
+        total - afterStop <= 4, 'afterStop=' + afterStop + ' total=' + total);
+}
+
 (async function main() {
     testKeyMapping();
     testJianpu();
     testPitch();
+    await testScalePracticeSession();
     await testAudio();
 
     console.log(failures === 0 ? '\nALL_PASS' : '\nFAILURES=' + failures);

@@ -526,6 +526,21 @@ cursor: pointer;
                     </select>
                 </div>
                 <div class="control-group">
+                    <label for="jianpu-song-time-signature">拍号（保存到自建曲目）</label>
+                    <select id="jianpu-song-time-signature">
+                        <option value="2/4">2/4</option>
+                        <option value="3/4">3/4</option>
+                        <option value="4/4" selected>4/4</option>
+                        <option value="6/8">6/8</option>
+                        <option value="9/8">9/8</option>
+                        <option value="12/8">12/8</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="jianpu-song-tempo">速度 BPM（保存到自建曲目）</label>
+                    <input type="number" id="jianpu-song-tempo" class="form-control form-control-sm" min="20" max="300" placeholder="如 90；留空则默认 82">
+                </div>
+                <div class="control-group">
                     <label for="jianpu-difficulty">难度</label>
                     <select id="jianpu-difficulty">
                         <option value="contour">入门 · 听走向（↑ → ↓）</option>

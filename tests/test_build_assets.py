@@ -24,6 +24,20 @@ def test_songs_json_is_valid_list():
         assert song.get('key')
 
 
+def test_songs_json_ids_are_unique():
+    songs = load_songs()
+    ids = [song.get('id') for song in songs]
+    assert all(i is not None for i in ids), 'songs.json 存在缺少 id 的曲目'
+    assert len(ids) == len(set(ids)), 'songs.json 存在重复 id'
+
+    allowed_ts = {'2/4', '3/4', '4/4', '6/8', '9/8', '12/8'}
+    for song in songs:
+        if song.get('time_signature'):
+            assert song['time_signature'] in allowed_ts, '不支持的拍号: %s' % song['time_signature']
+        if song.get('tempo') is not None:
+            assert 20 <= song['tempo'] <= 300, 'tempo 越界: %s' % song['tempo']
+
+
 def test_generated_builtin_songs_matches_songs_json():
     songs = load_songs()
     expected = build_assets.render_builtin_songs_js(songs)
